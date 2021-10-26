@@ -1,8 +1,5 @@
-import discord
 from discord.ext import commands
 import sqlite3
-import os
-import random
 from cryptography.fernet import Fernet as f
 
 
@@ -22,9 +19,9 @@ async def colocar(ctx):
     x = msg.splitlines()
     key = f.generate_key()
     t = f(key)
-    with open("chaves.key","wb") as k:
-        k.write(key)
-    pt1 = x[1]
+    pt1 = str(x[1])
+    with open("chaves.key","a") as k:
+        k.write(str(key) + "|" + str(pt1) + "\n")
     pt2 = t.encrypt(x[2].encode())
     if any(word in msg for word in nao):
         await ctx.send("Não foi possível cadastrar")
@@ -44,8 +41,9 @@ async def procurar(ctx):
     pc = x[1]
     conn = sqlite3.connect("base.db")
     cursor = conn.cursor()
-    senha = cursor.execute("SELECT senha FROM infos WHERE login = ?",(pc,))
-    resultado = senha[0]
+    cursor.execute("SELECT senha FROM infos WHERE login = (?)",(pc,))
+    fetch = cursor.fetchone()
+    resultado = fetch[0]
     await ctx.send(resultado)
 
     conn.commit()
