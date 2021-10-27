@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 import sqlite3
 from cryptography.fernet import Fernet as f
@@ -21,7 +22,7 @@ async def colocar(ctx):
     t = f(key)
     pt1 = str(x[1])
     with open("chaves.key","a") as k:
-        k.write(str(key) + "|" + str(pt1) + "\n")
+        k.write(key.decode("utf-8") + "|" + str(pt1) + "\n")
     pt2 = t.encrypt(x[2].encode())
     if any(word in msg for word in nao):
         await ctx.send("Não foi possível cadastrar")
@@ -34,20 +35,46 @@ async def colocar(ctx):
         conn.close()
         await ctx.send("Senha cadastrada com sucesso")
 
-@client.command()
-async def procurar(ctx):
-    msg = (str(ctx.message.content))
-    x = msg.splitlines()
-    pc = x[1]
-    conn = sqlite3.connect("base.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT senha FROM infos WHERE login = (?)",(pc,))
-    fetch = cursor.fetchone()
-    resultado = fetch[0]
-    await ctx.send(resultado)
+@client.command(pass_context = True)
+async def procurar(ctx, author, *, message=None):
+        #try:
+            msg = (str(ctx.message.content))
+            x = msg.splitlines()
+            pc = str(x[1])
+            conn = sqlite3.connect("base.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT senha FROM infos WHERE login = (?)",(pc,))
+            fetch = cursor.fetchone()
+            senha_criptografada = fetch[0]
+            with open("chaves.key", "r") as cr:
+                for lines in cr.readlines():
+                    data = lines.rstrip()
+                    hash, login = data.split("|")
+                    print(cr.readlines(), end= pc)
+                    if pc in cr:
+                        pass
 
-    conn.commit()
-    conn.close()
+
+                flag = 0
+                index = 0
+
+
+
+            key = hash
+            t = f(key)
+            senha_descriptografada = t.decrypt(senha_criptografada)
+            user = client.get_user(author)
+
+            await ctx.send("A sua senha criptograda é assim:" + str(senha_criptografada) + "\n" + "O seu hash é esse: " + hash)
+            await ctx.send(("Resumindo... hash: " + hash + " e o seu login é:  " + login))
+            await ctx.send(senha_descriptografada.decode("utf-8"))
+
+            await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
+
+            conn.commit()
+            conn.close()
+        #except:
+            #await ctx.send("Pelo visto o senhor não cadastrou essa senha, posso ser detetive, mas não sou advinha")
 
 
 
