@@ -101,10 +101,10 @@ async def deletar(ctx):
         conn.commit()
         conn.close()
         lock.release()
-        await ctx.send("Deletado com suceeso")
+        await ctx.send("Deletado com sucesso")
     except Exception:
         await ctx.send("Não foi possível deletar, verifique se preencheu corretamente "
-                       "ou se a senha que quer deletar realmente existe")
+                      "ou se a senha que quer deletar realmente existe")
 
 
 @client.command()
