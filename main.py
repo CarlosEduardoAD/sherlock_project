@@ -1,4 +1,5 @@
-# Documentação disponível na página do discord ()
+'''----------------------------SHERLOCK_PROJECT------------------------------'''
+# Documentação disponível na página do github ()
 
 # Importação das bibliotecas
 import multiprocessing  # Para realizar o lock e requerimento de processos
