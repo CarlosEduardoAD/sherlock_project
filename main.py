@@ -7,7 +7,7 @@ import sqlite3  # Biblioteca do sqlite3
 from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import os, stat
+import os
 import base64
 
 # Declaração de variáveis/objetos principais
@@ -15,9 +15,6 @@ lock = multiprocessing.Lock()
 client = commands.Bot(command_prefix="?")
 nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
 
-# Mudança de permissão da base
-
-os.chmod("base.db", stat.S_IRWXU)
 
 # Checagem de disponibilidade do bot
 @client.event
@@ -84,8 +81,8 @@ async def procurar(ctx):
         conn.commit()
         conn.close()
     except Exception:
-     await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
-cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
+        await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
+    cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
 
 @client.command()
@@ -98,10 +95,10 @@ async def deletar(ctx):
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM userinfo WHERE login = (?)", (pc,))
+        await ctx.send("Deletado com sucesso")
         conn.commit()
         conn.close()
         lock.release()
-        await ctx.send("Deletado com suceeso")
     except Exception:
         await ctx.send("Não foi possível deletar, verifique se preencheu corretamente "
                        "ou se a senha que quer deletar realmente existe")
