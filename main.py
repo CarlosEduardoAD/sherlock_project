@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import os
 import base64
+import re
 
 # Declaração de variáveis/objetos principais
 lock = multiprocessing.Lock()
@@ -29,29 +30,33 @@ async def colocar(ctx):
         x = msg.splitlines()
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
-        salt = os.urandom(256)
-        main_hash = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=320000,
-        )
-        key = (main_hash.derive(pt2)) #Geração da chave
-        t = f(base64.urlsafe_b64encode(key))
-        nova_senha = t.encrypt(pt2)
-        if any(word in msg for word in nao):
-            await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
-                           "digite uma senha sem extensão de arquivo ou protocolo web (http)")
+        pattern = "[a-zA-Z0-9]+\.[0-9]"
+        if (re.search(pattern, pt1)):
+            salt = os.urandom(256)
+            main_hash = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=320000,
+            )
+            key = (main_hash.derive(pt2)) #Geração da chave
+            t = f(base64.urlsafe_b64encode(key))
+            nova_senha = t.encrypt(pt2)
+            if any(word in msg for word in nao):
+                await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
+                               "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
+            else:
+                lock.acquire(True)
+                conn = sqlite3.connect('base.db')
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO userinfo(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
+                conn.commit()
+                conn.close()
+                await ctx.send("Senha cadastrada com sucesso")
+                lock.release()
         else:
-            lock.acquire(True)
-            conn = sqlite3.connect('base.db')
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO userinfo(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
-            conn.commit()
-            conn.close()
-            await ctx.send("Senha cadastrada com sucesso")
-            lock.release()
+            await ctx.send("Login inválido, digite ele novamente")
     except Exception:
         await ctx.send("Não foi possível cadastrar sua senha, "
                        "Para esse tipo de problema, faça esses três passos\n"
@@ -90,20 +95,18 @@ async def procurar(ctx):
 async def deletar(ctx):
     try:
         lock.acquire(True)
-        msg = (str(ctx.message.content))
+        msg = str(ctx.message.content)
         x = msg.splitlines()
-        pc = str(x[1])
+        palavra = x[1]
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM userinfo WHERE login = (?)", (pc,))
-        await ctx.send("Deletado com sucesso")
+        cursor.execute("DELETE FROM userinfo WHERE login = (?)", (palavra,))
         conn.commit()
         conn.close()
         lock.release()
-    except Exception:
-        await ctx.send("Não foi possível deletar, verifique se preencheu corretamente "
-                       "ou se a senha que quer deletar realmente existe")
-
+        await ctx.send("Deletado com sucesso")
+    except:
+        await ctx.send("nao foi")
 
 @client.command()
 async def ola(ctx):
@@ -113,8 +116,10 @@ async def ola(ctx):
 @client.command()
 async def ajuda(ctx):
     await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
-    enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
-Para ver suas senhas, digite '?ver', e em seguida, aperte barra de espaço e escreva o seu login. ''')
+enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
+Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
+Seu login precisa ter pelo menos uma letra maiúscula e um número, caso contrário a base de dados pode ter conflitos na hora de buscar sua senha \n
+Não é possível colocar uma senha com o mesmo login, se quiser colocar uma outra senha para o seu login, terá que ou deletar seu login antigo ou criar fazer uma nova colocação.''')
 
 
 @client.command()
