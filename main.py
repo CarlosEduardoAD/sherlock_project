@@ -101,12 +101,13 @@ async def deletar(ctx):
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM userinfo WHERE login = (?)", (palavra,))
+        await ctx.send("Não foi possível achar sua senha")
         conn.commit()
         conn.close()
         lock.release()
-        await ctx.send("Deletado com sucesso")
+        await ctx.send("Sua senha foi deletada com sucesso")
     except:
-        await ctx.send("nao foi")
+        await ctx.send("Não foi possível deletar, verifique se preencheu a segunda linha com seu login")
 
 @client.command()
 async def ola(ctx):
@@ -118,7 +119,9 @@ async def ajuda(ctx):
     await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
-Seu login precisa ter pelo menos uma letra maiúscula e um número, caso contrário a base de dados pode ter conflitos na hora de buscar sua senha \n
+Seu login precisa ter pelomenos uma letra maíscula, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
+minhasenhasecreta.201920202021 \n
+não, caso contrário a base de dados pode ter conflitos na hora de buscar sua senha \n
 Não é possível colocar uma senha com o mesmo login, se quiser colocar uma outra senha para o seu login, terá que ou deletar seu login antigo ou criar fazer uma nova colocação.''')
 
 
