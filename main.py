@@ -30,7 +30,7 @@ async def colocar(ctx):
         x = msg.splitlines()
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
-        pattern = "[a-zA-Z0-9]+\.[0-9]"
+        pattern = "[a-zA-Z0-9]+\:[0-9]"
         if (re.search(pattern, pt1)):
             salt = os.urandom(256)
             main_hash = PBKDF2HMAC(
@@ -56,7 +56,7 @@ async def colocar(ctx):
                 await ctx.send("Senha cadastrada com sucesso")
                 lock.release()
         else:
-            await ctx.send("Login inválido, digite ele novamente")
+            await ctx.send("Palavra-chave inválida, digite ela novamente")
     except Exception:
         await ctx.send("Não foi possível cadastrar sua senha, "
                        "Para esse tipo de problema, faça esses três passos\n"
@@ -100,12 +100,13 @@ async def deletar(ctx):
         palavra = x[1]
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM userinfo WHERE login = (?)", (palavra,))
-        await ctx.send("Não foi possível achar sua senha")
+        cursor.execute("DELETE FROM userinfo WHERE EXISTS(SELECT 1 FROM userinfo WHERE login = (?))", (palavra,))
+        cursor.execute("SELECT * FROM userinfo WHERE login = (?)", (palavra,))
+        a = cursor.fetchone()
         conn.commit()
         conn.close()
         lock.release()
-        await ctx.send("Sua senha foi deletada com sucesso")
+        await ctx.author.send("A saída 'None' é apenas uma palavra do sistema para indicar se a senha foi deletada ou não,se ela aparecer, quer dizer que foi apagada se você digitou uma senha que não existe, não se preocupe, nada mudou: " + "-" +str(a)+"-")
     except:
         await ctx.send("Não foi possível deletar, verifique se preencheu a segunda linha com seu login")
 
@@ -119,8 +120,11 @@ async def ajuda(ctx):
     await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
-Seu login precisa ter pelomenos uma letra maíscula, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
+Seu login precisa ter pelo menos uma letra maíscula, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
 minhasenhasecreta.201920202021 \n
+Este bot não é indicado para ser utilizado em servidores grandes, mas em servidores mais pequenos e de um grupo específico de pessoas
+NUNCA coloque seu email como login (exemplos: fulanofaztudo@gmail.com)
+é
 não, caso contrário a base de dados pode ter conflitos na hora de buscar sua senha \n
 Não é possível colocar uma senha com o mesmo login, se quiser colocar uma outra senha para o seu login, terá que ou deletar seu login antigo ou criar fazer uma nova colocação.''')
 
