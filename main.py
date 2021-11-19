@@ -23,6 +23,9 @@ nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql"
 async def on_ready():
     print("Bot is ready")
 # Comando central de alocamento de informações do usuário
+
+'''-------------------------COMANDO DE COLOCAR------------------------------'''
+
 @client.command()
 async def colocar(ctx):
     try:
@@ -53,7 +56,7 @@ async def colocar(ctx):
                 cursor.execute("INSERT INTO userinfo(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
                 conn.commit()
                 conn.close()
-                await ctx.send("Senha cadastrada com sucesso")
+                await ctx.author.send("Senha cadastrada com sucesso")
                 lock.release()
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
@@ -64,7 +67,10 @@ async def colocar(ctx):
                        "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
                        "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
 
+'''-------------------------COMANDO DE COLOCAR------------------------------'''
 
+
+'''-------------------------COMANDO DE PROCURAR------------------------------'''
 @client.command(pass_context=True)
 async def procurar(ctx):
     try:
@@ -86,29 +92,53 @@ async def procurar(ctx):
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
         conn.commit()
         conn.close()
+
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
-    cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
+        cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
+'''-------------------------COMANDO DE PROCURAR------------------------------'''
 
+'''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
-async def deletar(ctx):
+async def atualizar(ctx):
     try:
-        lock.acquire(True)
-        msg = str(ctx.message.content)
+        msg = (str(ctx.message.content))  # Divisão do input
         x = msg.splitlines()
-        palavra = x[1]
-        conn = sqlite3.connect("base.db")
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM userinfo WHERE EXISTS(SELECT 1 FROM userinfo WHERE login = (?))", (palavra,))
-        cursor.execute("SELECT * FROM userinfo WHERE login = (?)", (palavra,))
-        a = cursor.fetchone()
-        conn.commit()
-        conn.close()
-        lock.release()
-        await ctx.author.send("A saída 'None' é apenas uma palavra do sistema para indicar se a senha foi deletada ou não,se ela aparecer, quer dizer que foi apagada se você digitou uma senha que não existe, não se preocupe, nada mudou: " + "-" +str(a)+"-")
+        pt1 = str(x[1])
+        pt2 = (x[2].encode("utf-8"))
+        pattern = "[a-zA-Z0-9]+\:[0-9]"
+        if (re.search(pattern, pt1)):
+            salt = os.urandom(256)
+            main_hash = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=320000,
+            )
+            key = (main_hash.derive(pt2))  # Geração da chave
+            t = f(base64.urlsafe_b64encode(key))
+            nova_senha = t.encrypt(pt2)
+            if any(word in msg for word in nao):
+                await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
+                               "digite uma senha sem extensão de arquivo ou protocolo web (http)")
+
+            else:
+                lock.acquire(True)
+                conn = sqlite3.connect('base.db')
+                cursor = conn.cursor()
+                cursor.execute("UPDATE userinfo SET senha = (?) WHERE login = (?) ", (nova_senha, pt1))
+                conn.commit()
+                conn.close()
+                await ctx.author.send("Senha atualizada com sucesso")
+                lock.release()
+        else:
+            await ctx.send("Palavra-chave inválida, digite ela novamente")
     except:
-        await ctx.send("Não foi possível deletar, verifique se preencheu a segunda linha com seu login")
+         await ctx.send("Não foi possível atualizar, verifique se preencheu a segunda linha com seu login")
+
+'''-------------------------COMANDO DE ATUALIZAR------------------------------'''
+
 
 @client.command()
 async def ola(ctx):
