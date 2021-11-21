@@ -127,7 +127,7 @@ async def atualizar(ctx):
                 lock.acquire(True)
                 conn = sqlite3.connect('base.db')
                 cursor = conn.cursor()
-                cursor.execute("UPDATE userinfo SET senha = (?) WHERE login = (?) ", (nova_senha, pt1))
+                cursor.execute("UPDATE userinfo SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1))
                 conn.commit()
                 conn.close()
                 await ctx.author.send("Senha atualizada com sucesso")
@@ -150,12 +150,11 @@ async def ajuda(ctx):
     await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
+Asseguramos que você utilize o bot mandando MENSAGENS DIRETAS para ele, e NÃO usando o CHAT DO SERVIDOR, não se dá para confiar 100% em todos em servidores públicos \n
 Seu login precisa ter pelo menos uma letra maíscula, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
-minhasenhasecreta.201920202021 \n
+minhasenhasecreta:201920202021 \n
 Este bot não é indicado para ser utilizado em servidores grandes, mas em servidores mais pequenos e de um grupo específico de pessoas
 NUNCA coloque seu email como login (exemplos: fulanofaztudo@gmail.com)
-é
-não, caso contrário a base de dados pode ter conflitos na hora de buscar sua senha \n
 Não é possível colocar uma senha com o mesmo login, se quiser colocar uma outra senha para o seu login, terá que ou deletar seu login antigo ou criar fazer uma nova colocação.''')
 
 
@@ -204,7 +203,7 @@ async def dicas(ctx):
             2- Como criar uma senha forte ? \n
                 Colocar uma palavra-chave da qual você use com frequência e alguma série de números é uma boa ideia, sempre colcar senhas em sites diferentes também é recomendado, em relação aos caractéres especiais, algumas sites não permitem o uso desses caractéres, mas aqui você está livre para usar eles.
             3- E se eu perder minha senha ? 
-                Você pode deletar ela com o comando ?deletar, para evitar problemas, coloque o login como algo mais próprio do que superficial.    
+                Você pode atualizar ela com o comando ?atualizar, para evitar problemas, nós avisamos que a senha foi cadastrada e deixamos ela ao lado para que o usuário não a esqueça.    
              ''')
 
 
