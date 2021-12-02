@@ -1,7 +1,10 @@
+import sourcedefender
+
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
 # Documentação disponível na página do github ()
 
 # Importação das bibliotecas
+from AES_generation import generate
 import multiprocessing  # Para realizar o lock e requerimento de processos
 from discord.ext import commands  # Biblioteca do discord
 import sqlite3  # Biblioteca do sqlite3
@@ -56,13 +59,12 @@ async def colocar(ctx):
                 cursor.execute("INSERT INTO userinfo(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
                 conn.commit()
                 conn.close()
-                await ctx.author.send("Senha cadastrada com sucesso")
+                await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}")
                 lock.release()
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except Exception:
         await ctx.send("Não foi possível cadastrar sua senha, "
-                       "Para esse tipo de problema, faça esses três passos\n"
                        "1- Veja se não colocou arquivos ou links da web\n"
                        "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
                        "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
@@ -95,7 +97,7 @@ async def procurar(ctx):
 
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
-        cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
+cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
 '''-------------------------COMANDO DE PROCURAR------------------------------'''
 
@@ -151,7 +153,7 @@ async def ajuda(ctx):
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
 Asseguramos que você utilize o bot mandando MENSAGENS DIRETAS para ele, e NÃO usando o CHAT DO SERVIDOR, não se dá para confiar 100% em todos em servidores públicos \n
-Seu login precisa ter pelo menos uma letra maíscula, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
+A primeira parte do seu login não pode ter barra de espaço, é necessário colocar também um ponto e alguns números, mais ou menos assim \n 
 minhasenhasecreta:201920202021 \n
 Este bot não é indicado para ser utilizado em servidores grandes, mas em servidores mais pequenos e de um grupo específico de pessoas
 NUNCA coloque seu email como login (exemplos: fulanofaztudo@gmail.com)
@@ -188,7 +190,7 @@ ou nunca sequer pensou em doar para ele, nosso serviço continuará gratuito\n
 @client.command()
 async def dicas(ctx):
     await ctx.send('''Não se preocupe, estou aqui para dar algumas dicas \n
-             1- Evite senhas simples (1234, 0123) \n
+             1- Evite senhas simples (1234, 0123 ou "Seu nome"123) \n
                 'Vejo isso em todo o lugar, porque realmente preciso fazer isso ?'
                 Não que seja estritamente necessário, porém é o mais recomendado \n
                 Quando sua senha é enviada para algum servidor (exemplo: senha do instagram), 
