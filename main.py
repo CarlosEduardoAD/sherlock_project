@@ -4,7 +4,6 @@ import sourcedefender
 # Documentação disponível na página do github ()
 
 # Importação das bibliotecas
-from AES_generation import generate
 import multiprocessing  # Para realizar o lock e requerimento de processos
 from discord.ext import commands  # Biblioteca do discord
 import sqlite3  # Biblioteca do sqlite3
