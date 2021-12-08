@@ -13,18 +13,43 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import os
 import base64
 import re
+from dotenv import load_dotenv
+import logging
 
 # Declaração de variáveis/objetos principais
 lock = multiprocessing.Lock()
 client = commands.Bot(command_prefix="?")
 nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
 
+logger = logging.getLogger("SHERLOCK")
+
+logging.basicConfig(level=logging.INFO)
+file = logging.FileHandler("logs.log")
+file.setLevel(logging.INFO)
+logger.addHandler(file)
 
 # Checagem de disponibilidade do bot
 @client.event
 async def on_ready():
     print("Bot is ready")
+    logger.info("BOT ESTÁ PRONTO")
 # Comando central de alocamento de informações do usuário
+
+'''-------------------------COMANDO DE COLOCAR------------------------------'''
+
+@client.command()
+async def criar(ctx):
+    msg = str(ctx.message.content)
+    y = msg.splitlines()
+    nome = y[1]
+    conn = sqlite3.connect("base.db")
+    cursor = conn.cursor()
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS {nome}(
+                    id integer NOT NULL PRIMARY KEY,
+                    login text,
+                    senha text,
+                    hash text)''')
+    await ctx.send("Seu cofre foi criado com sucesso")
 
 '''-------------------------COMANDO DE COLOCAR------------------------------'''
 
@@ -35,6 +60,7 @@ async def colocar(ctx):
         x = msg.splitlines()
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
+        pt3 = str(x[3])
         pattern = "[a-zA-Z0-9]+\:[0-9]"
         if (re.search(pattern, pt1)):
             salt = os.urandom(256)
@@ -55,11 +81,12 @@ async def colocar(ctx):
                 lock.acquire(True)
                 conn = sqlite3.connect('base.db')
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO userinfo(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
+                cursor.execute(f"INSERT INTO {pt3}(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
                 conn.commit()
                 conn.close()
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}")
                 lock.release()
+                logger.info("cadastro realizado")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except Exception:
@@ -78,13 +105,14 @@ async def procurar(ctx):
         msg = (str(ctx.message.content))
         x = msg.splitlines()
         pc = str(x[1])
+        tab = str(x[2])
         lock.acquire(True)
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT senha FROM userinfo WHERE login = (?)", (pc,))
+        cursor.execute(f"SELECT senha FROM {tab} WHERE login = (?)", (pc,))
         fetch = cursor.fetchone()
         senha_criptografada = fetch[0]
-        cursor.execute("SELECT hash FROM userinfo WHERE login = (?)", (pc,))
+        cursor.execute(f"SELECT hash FROM {tab} WHERE login = (?)", (pc,))
         fetch2 = cursor.fetchone()
         key = fetch2[0]
         t = f(base64.urlsafe_b64encode(key))
@@ -93,6 +121,7 @@ async def procurar(ctx):
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
         conn.commit()
         conn.close()
+        logger.info("requisição realizada")
 
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
@@ -108,6 +137,7 @@ async def atualizar(ctx):
         x = msg.splitlines()
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
+        pt3_2 = str(x[3])
         pattern = "[a-zA-Z0-9]+\:[0-9]"
         if (re.search(pattern, pt1)):
             salt = os.urandom(256)
@@ -128,11 +158,12 @@ async def atualizar(ctx):
                 lock.acquire(True)
                 conn = sqlite3.connect('base.db')
                 cursor = conn.cursor()
-                cursor.execute("UPDATE userinfo SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1))
+                cursor.execute(f"UPDATE {pt3_2} SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1))
                 conn.commit()
                 conn.close()
                 await ctx.author.send("Senha atualizada com sucesso")
                 lock.release()
+                logger.info("atualização realizada")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except:
@@ -208,6 +239,7 @@ async def dicas(ctx):
              ''')
 
 
-token = "ODkyODkyNDI4MDMyNDMwMTMw.YVTg3w.wnZO74VcCMu3DUEB7Vsy923MNyk"
+load_dotenv()
+token = os.getenv('token')
 if __name__ == "__main__":
     client.run(token)
