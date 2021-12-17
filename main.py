@@ -15,15 +15,25 @@ import base64
 import re
 from dotenv import load_dotenv
 import logging
+import datetime as dt
+import random
+import string
 
 # Declaração de variáveis/objetos principais
 lock = multiprocessing.Lock()
 client = commands.Bot(command_prefix="?")
 nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
-
+data = dt.datetime.now()
 logger = logging.getLogger("SHERLOCK")
+z = ''.join(random.sample(string.ascii_lowercase, 16))
+h = ''.join(random.sample(string.ascii_lowercase, 16))
+p = ''.join(random.sample(string.ascii_lowercase, 16))
+amogus = ''.join(random.sample(string.ascii_lowercase, 16))
 
-logging.basicConfig(level=logging.INFO)
+
+
+#Configuração do Logging
+logging.basicConfig(filename = "logs.log", level=logging.INFO)
 file = logging.FileHandler("logs.log")
 file.setLevel(logging.INFO)
 logger.addHandler(file)
@@ -32,10 +42,10 @@ logger.addHandler(file)
 @client.event
 async def on_ready():
     print("Bot is ready")
-    logger.info("BOT ESTÁ PRONTO")
+    logger.info("Bot está pronto")
 # Comando central de alocamento de informações do usuário
 
-'''-------------------------COMANDO DE COLOCAR------------------------------'''
+'''-------------------------COMANDO DE CRIAR------------------------------'''
 
 @client.command()
 async def criar(ctx):
@@ -50,8 +60,8 @@ async def criar(ctx):
                     senha text,
                     hash text)''')
     await ctx.send("Seu cofre foi criado com sucesso")
-
-'''-------------------------COMANDO DE COLOCAR------------------------------'''
+    logger.info("f{data}: cofre criado")
+'''-------------------------COMANDO DE CRIAR------------------------------'''
 
 @client.command()
 async def colocar(ctx):
@@ -61,7 +71,7 @@ async def colocar(ctx):
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
         pt3 = str(x[3])
-        pattern = "[a-zA-Z0-9]+\:[0-9]"
+        pattern = "[a-zA-Z0-9]+\-[0-9]"
         if (re.search(pattern, pt1)):
             salt = os.urandom(256)
             main_hash = PBKDF2HMAC(
@@ -86,7 +96,7 @@ async def colocar(ctx):
                 conn.close()
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}")
                 lock.release()
-                logger.info("cadastro realizado")
+                logger.info(f"{data}: cadastro realizado")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except Exception:
@@ -121,13 +131,13 @@ async def procurar(ctx):
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
         conn.commit()
         conn.close()
-        logger.info("requisição realizada")
+        logger.info(f"{data}: requisição realizada")
 
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
 cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
-'''-------------------------COMANDO DE PROCURAR------------------------------'''
+#'''-------------------------COMANDO DE PROCURAR------------------------------'''
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
@@ -138,7 +148,7 @@ async def atualizar(ctx):
         pt1 = str(x[1])
         pt2 = (x[2].encode("utf-8"))
         pt3_2 = str(x[3])
-        pattern = "[a-zA-Z0-9]+\:[0-9]"
+        pattern = "[a-zA-Z0-9]+\-[0-9]"
         if (re.search(pattern, pt1)):
             salt = os.urandom(256)
             main_hash = PBKDF2HMAC(
@@ -163,7 +173,7 @@ async def atualizar(ctx):
                 conn.close()
                 await ctx.author.send("Senha atualizada com sucesso")
                 lock.release()
-                logger.info("atualização realizada")
+                logger.info(f"{data}: atualização realizada")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except:
@@ -171,6 +181,29 @@ async def atualizar(ctx):
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 
+'''-------------------------COMANDO DE VER------------------------------'''
+
+@client.command()
+async def ver(ctx):
+    try:
+        msg = str(ctx.message.content)
+        z = msg.splitlines()
+        tab = z[1]
+        conn = sqlite3.connect("base.db")
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT login FROM {tab}")
+        rs = cursor.fetchall()
+        conn.commit()
+        conn.close()
+        cont = 1
+        for row in rs:
+            await ctx.send(f"Essa é a sua senha número {cont}: " + " | ".join(row))
+            cont = cont + 1
+        logger.info(f"{data}: resquisição de tabela realizada")
+    except:
+        await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
+
+'''-------------------------COMANDO DE VER------------------------------'''
 
 @client.command()
 async def ola(ctx):
@@ -237,7 +270,6 @@ async def dicas(ctx):
             3- E se eu perder minha senha ? 
                 Você pode atualizar ela com o comando ?atualizar, para evitar problemas, nós avisamos que a senha foi cadastrada e deixamos ela ao lado para que o usuário não a esqueça.    
              ''')
-
 
 load_dotenv()
 token = os.getenv('token')
