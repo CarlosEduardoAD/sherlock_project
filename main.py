@@ -19,16 +19,15 @@ import datetime as dt
 import random
 import string
 
+
+
 # Declaração de variáveis/objetos principais
 lock = multiprocessing.Lock()
 client = commands.Bot(command_prefix="?")
 nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
 data = dt.datetime.now()
 logger = logging.getLogger("SHERLOCK")
-z = ''.join(random.sample(string.ascii_lowercase, 16))
-h = ''.join(random.sample(string.ascii_lowercase, 16))
-p = ''.join(random.sample(string.ascii_lowercase, 16))
-amogus = ''.join(random.sample(string.ascii_lowercase, 16))
+
 
 
 
