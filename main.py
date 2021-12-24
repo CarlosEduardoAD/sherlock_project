@@ -1,7 +1,7 @@
 import sourcedefender
 
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
-# Documentação disponível na página do github ()
+# Documentação disponível na página do github (página a ser inserida)
 
 # Importação das bibliotecas
 import multiprocessing  # Para realizar o lock e requerimento de processos
