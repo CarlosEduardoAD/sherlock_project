@@ -48,18 +48,22 @@ async def on_ready():
 
 @client.command()
 async def criar(ctx):
-    msg = str(ctx.message.content)
-    y = msg.splitlines()
-    nome = y[1]
-    conn = sqlite3.connect("base.db")
-    cursor = conn.cursor()
-    cursor.execute(f'''CREATE TABLE IF NOT EXISTS {nome}(
-                    id integer NOT NULL PRIMARY KEY,
-                    login text,
-                    senha text,
-                    hash text)''')
-    await ctx.send("Seu cofre foi criado com sucesso")
-    logger.info("f{data}: cofre criado")
+    try:
+
+        msg = str(ctx.message.content)
+        y = msg.splitlines()
+        nome = y[1]
+        conn = sqlite3.connect("base.db")
+        cursor = conn.cursor()
+        cursor.execute(f'''CREATE TABLE IF NOT EXISTS {nome}(
+                        id integer NOT NULL PRIMARY KEY,
+                        login text,
+                        senha text,
+                        hash text)''')
+        await ctx.send("Seu cofre foi criado com sucesso")
+        logger.info("f{data}: cofre criado")
+
+    except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
 '''-------------------------COMANDO DE CRIAR------------------------------'''
 
 @client.command()
