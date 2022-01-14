@@ -1,10 +1,10 @@
 import sourcedefender
 
+
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
 # Documentação disponível na página do github (página a ser inserida)
 
 # Importação das bibliotecas
-import multiprocessing  # Para realizar o lock e requerimento de processos
 from discord.ext import commands  # Biblioteca do discord
 import sqlite3  # Biblioteca do sqlite3
 from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
@@ -22,12 +22,11 @@ import string
 
 
 # Declaração de variáveis/objetos principais
-lock = multiprocessing.Lock()
+
 client = commands.Bot(command_prefix="?")
 nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
 data = dt.datetime.now()
 logger = logging.getLogger("SHERLOCK")
-
 
 
 
@@ -36,6 +35,7 @@ logging.basicConfig(filename = "logs.log", level=logging.INFO)
 file = logging.FileHandler("logs.log")
 file.setLevel(logging.INFO)
 logger.addHandler(file)
+
 
 # Checagem de disponibilidade do bot
 @client.event
@@ -49,7 +49,6 @@ async def on_ready():
 @client.command()
 async def criar(ctx):
     try:
-
         msg = str(ctx.message.content)
         y = msg.splitlines()
         nome = y[1]
@@ -64,7 +63,9 @@ async def criar(ctx):
         logger.info("f{data}: cofre criado")
 
     except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
-'''-------------------------COMANDO DE CRIAR------------------------------'''
+'''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
+
+'''-------------------------COMANDO DE COLOCAR------------------------------'''
 
 @client.command()
 async def colocar(ctx):
@@ -91,14 +92,12 @@ async def colocar(ctx):
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                lock.acquire(True)
                 conn = sqlite3.connect('base.db')
                 cursor = conn.cursor()
                 cursor.execute(f"INSERT INTO {pt3}(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
                 conn.commit()
                 conn.close()
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}")
-                lock.release()
                 logger.info(f"{data}: cadastro realizado")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
@@ -108,7 +107,7 @@ async def colocar(ctx):
                        "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
                        "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
 
-'''-------------------------COMANDO DE COLOCAR------------------------------'''
+'''-------------------------FIM DO COMANDO DE COLOCAR------------------------------'''
 
 
 '''-------------------------COMANDO DE PROCURAR------------------------------'''
@@ -119,7 +118,6 @@ async def procurar(ctx):
         x = msg.splitlines()
         pc = str(x[1])
         tab = str(x[2])
-        lock.acquire(True)
         conn = sqlite3.connect("base.db")
         cursor = conn.cursor()
         cursor.execute(f"SELECT senha FROM {tab} WHERE login = (?)", (pc,))
@@ -130,7 +128,6 @@ async def procurar(ctx):
         key = fetch2[0]
         t = f(base64.urlsafe_b64encode(key))
         senha_descriptografada = t.decrypt(senha_criptografada)
-        lock.release()
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
         conn.commit()
         conn.close()
@@ -140,7 +137,7 @@ async def procurar(ctx):
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
 cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
-#'''-------------------------COMANDO DE PROCURAR------------------------------'''
+'''-------------------------FIM DO COMANDO DE PROCURAR------------------------------'''
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
@@ -168,21 +165,19 @@ async def atualizar(ctx):
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                lock.acquire(True)
                 conn = sqlite3.connect('base.db')
                 cursor = conn.cursor()
                 cursor.execute(f"UPDATE {pt3_2} SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1))
                 conn.commit()
                 conn.close()
                 await ctx.author.send("Senha atualizada com sucesso")
-                lock.release()
                 logger.info(f"{data}: atualização realizada")
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente")
     except:
          await ctx.send("Não foi possível atualizar, verifique se preencheu a segunda linha com seu login")
 
-'''-------------------------COMANDO DE ATUALIZAR------------------------------'''
+'''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
 
 '''-------------------------COMANDO DE VER------------------------------'''
 
@@ -206,7 +201,7 @@ async def ver(ctx):
     except:
         await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
 
-'''-------------------------COMANDO DE VER------------------------------'''
+'''-------------------------FIM DO COMANDO DE VER------------------------------'''
 
 @client.command()
 async def ola(ctx):
