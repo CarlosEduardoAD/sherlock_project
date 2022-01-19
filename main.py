@@ -1,6 +1,3 @@
-import sourcedefender
-
-
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
 # Documentação disponível na página do github (página a ser inserida)
 
@@ -16,8 +13,6 @@ import re
 from dotenv import load_dotenv
 import logging
 import datetime as dt
-import random
-import string
 
 
 
@@ -42,26 +37,26 @@ logger.addHandler(file)
 async def on_ready():
     print("Bot is ready")
     logger.info("Bot está pronto")
-# Comando central de alocamento de informações do usuário
 
 '''-------------------------COMANDO DE CRIAR------------------------------'''
 
 @client.command()
 async def criar(ctx):
     try:
-        msg = str(ctx.message.content)
-        y = msg.splitlines()
-        nome = y[1]
-        conn = sqlite3.connect("base.db")
-        cursor = conn.cursor()
+        msg = str(ctx.message.content) # Declaração da varíavel central que pega o conteúdo da mensagem
+        y = msg.splitlines() # Seperação conteúdo, cada palavra em uma nova linha será armazaenada como um elemento de uma lista
+        nome = y[1] # Apanhado do primeiro elemento da lista
+        conn = sqlite3.connect("base.db") # Conexão com base de dados
+        cursor = conn.cursor() # Criação do cursor (para executar comandos SQL)
         cursor.execute(f'''CREATE TABLE IF NOT EXISTS {nome}(
                         id integer NOT NULL PRIMARY KEY,
                         login text,
                         senha text,
-                        hash text)''')
-        await ctx.send("Seu cofre foi criado com sucesso")
-        logger.info("f{data}: cofre criado")
+                        hash text)''') #Comando SQL
+        await ctx.send("Seu cofre foi criado com sucesso") # Envio da mensagem de sucesso
+        logger.info("f{data}: cofre criado") # Log
 
+    #Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha, usuário não colocou informações e/ou não colocou as corretas, manda uma mensagem de erro)
     except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
 '''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
 
@@ -70,38 +65,39 @@ async def criar(ctx):
 @client.command()
 async def colocar(ctx):
     try:
-        msg = (str(ctx.message.content)) # Divisão do input
-        x = msg.splitlines()
-        pt1 = str(x[1])
-        pt2 = (x[2].encode("utf-8"))
-        pt3 = str(x[3])
-        pattern = "[a-zA-Z0-9]+\-[0-9]"
-        if (re.search(pattern, pt1)):
-            salt = os.urandom(256)
-            main_hash = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=320000,
-            )
-            key = (main_hash.derive(pt2)) #Geração da chave
-            t = f(base64.urlsafe_b64encode(key))
-            nova_senha = t.encrypt(pt2)
+        msg = (str(ctx.message.content)) # Apanhado do countéudo
+        x = msg.splitlines() # Divisão do countéudo em lista
+        pt1 = str(x[1]) # Apanhado do primeiro elemento, esse será o login
+        pt2 = (x[2].encode("utf-8")) # Apanhado do segundo elemento, esse será a senha a ser criptografada
+        pt3 = str(x[3]) # # Nome do cofre, aqui será o elemento central, pois ele determinará onde será colocado as informações acima
+        pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
+        if (re.search(pattern, pt1)): # Se o login seguir o padrão regex, ele vai criar um hash
             if any(word in msg for word in nao):
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                conn = sqlite3.connect('base.db')
-                cursor = conn.cursor()
-                cursor.execute(f"INSERT INTO {pt3}(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,))
-                conn.commit()
-                conn.close()
-                await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}")
-                logger.info(f"{data}: cadastro realizado")
+                salt = os.urandom(256)  # Salt
+                main_hash = PBKDF2HMAC(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=salt,
+                    iterations=320000,
+                )  # Criação do hash (utiliza tecnologia sha256 como descrito nos argumentos)
+                key = (main_hash.derive(pt2))  # Geração da chave
+                t = f(base64.urlsafe_b64encode(key))  # Codificação da chave em base64 (pra "binarizar")
+                nova_senha = t.encrypt(pt2)  # Senha criptografada
+                conn = sqlite3.connect('base.db') # Conexão com base de dados
+                cursor = conn.cursor() # Cursor
+                cursor.execute(f"INSERT INTO {pt3}(login,hash,senha) VALUES (?,?,?)", (pt1, key, nova_senha,)) # Cadastro do login, senha e hash
+                conn.commit() # Gravação dos resultados
+                conn.close() # Fechamento da conexão
+                await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}") # Mensagem de sucesso
+                logger.info(f"{data}: cadastro realizado") # Log
         else:
-            await ctx.send("Palavra-chave inválida, digite ela novamente")
+            await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o login não respeitar o padrão regex, ele retorna essa mensagem
     except Exception:
+        # Se algo estiver errado com a mensagem do usuário, essa mensagem é retornada
         await ctx.send("Não foi possível cadastrar sua senha, "
                        "1- Veja se não colocou arquivos ou links da web\n"
                        "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
@@ -114,25 +110,26 @@ async def colocar(ctx):
 @client.command(pass_context=True)
 async def procurar(ctx):
     try:
-        msg = (str(ctx.message.content))
-        x = msg.splitlines()
-        pc = str(x[1])
-        tab = str(x[2])
-        conn = sqlite3.connect("base.db")
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT senha FROM {tab} WHERE login = (?)", (pc,))
-        fetch = cursor.fetchone()
-        senha_criptografada = fetch[0]
-        cursor.execute(f"SELECT hash FROM {tab} WHERE login = (?)", (pc,))
-        fetch2 = cursor.fetchone()
-        key = fetch2[0]
-        t = f(base64.urlsafe_b64encode(key))
-        senha_descriptografada = t.decrypt(senha_criptografada)
-        await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8"))
-        conn.commit()
-        conn.close()
-        logger.info(f"{data}: requisição realizada")
+        msg = (str(ctx.message.content)) # Mensagem do usuário
+        x = msg.splitlines() # Divisão em lista
+        pc = str(x[1]) # Pega o login
+        tab = str(x[2])# Pega o nome do cofre
+        conn = sqlite3.connect("base.db") # Conexão
+        cursor = conn.cursor() # Cursor
+        cursor.execute(f"SELECT senha FROM {tab} WHERE login = (?)", (pc,)) # Procura a senha a partir do login
+        fetch = cursor.fetchone() # Resgata o resultado
+        senha_criptografada = fetch[0] # Resultado é retornado em forma de lista dentro de uma tupla, se pega o primeiro elemento dessa lista
+        cursor.execute(f"SELECT hash FROM {tab} WHERE login = (?)", (pc,)) # Procura o Hash a partir do login
+        fetch2 = cursor.fetchone() # Resgata o resultado
+        key = fetch2[0] # Pega o primeiro elemento da lista gerada
+        t = f(base64.urlsafe_b64encode(key)) # Codifica a chave
+        senha_descriptografada = t.decrypt(senha_criptografada) # Agora com a chave, descriptografa a senha retornada anteriormente
+        await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8")) # Mensagem de sucesso
+        conn.commit() # Gravação
+        conn.close() # Fechamento
+        logger.info(f"{data}: requisição realizada") # Log
 
+    # Se os dados não existirem ou se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
 cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
@@ -143,37 +140,38 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 @client.command()
 async def atualizar(ctx):
     try:
-        msg = (str(ctx.message.content))  # Divisão do input
-        x = msg.splitlines()
-        pt1 = str(x[1])
-        pt2 = (x[2].encode("utf-8"))
-        pt3_2 = str(x[3])
-        pattern = "[a-zA-Z0-9]+\-[0-9]"
-        if (re.search(pattern, pt1)):
-            salt = os.urandom(256)
-            main_hash = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=320000,
-            )
-            key = (main_hash.derive(pt2))  # Geração da chave
-            t = f(base64.urlsafe_b64encode(key))
-            nova_senha = t.encrypt(pt2)
+        msg = (str(ctx.message.content)) # Mensagem do usuário
+        x = msg.splitlines() # Divisão em lista
+        pt1 = str(x[1]) # Pega o login
+        pt2 = (x[2].encode("utf-8")) # Pega a senha que vai substituir a passada
+        pt3_2 = str(x[3]) # Pega o nome do cofre
+        pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
+        if (re.search(pattern, pt1)): # Se a mensagem respeitar o padrão
             if any(word in msg for word in nao):
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                conn = sqlite3.connect('base.db')
-                cursor = conn.cursor()
-                cursor.execute(f"UPDATE {pt3_2} SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1))
-                conn.commit()
-                conn.close()
-                await ctx.author.send("Senha atualizada com sucesso")
-                logger.info(f"{data}: atualização realizada")
+                salt = os.urandom(256)
+                main_hash = PBKDF2HMAC(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=salt,
+                    iterations=320000,
+                )
+                key = (main_hash.derive(pt2))  # Geração da chave
+                t = f(base64.urlsafe_b64encode(key))  # Codificação da chave
+                nova_senha = t.encrypt(pt2)  # Criptografia da senha
+                conn = sqlite3.connect('base.db') # Conexão
+                cursor = conn.cursor() # Cursor
+                cursor.execute(f"UPDATE {pt3_2} SET senha = (?), hash = (?) WHERE login = (?) ", (nova_senha, key, pt1)) # Substituição da senha
+                conn.commit() # Gravação
+                conn.close() # Fechamento
+                await ctx.author.send("Senha atualizada com sucesso") # Mensagem de sucesso
+                logger.info(f"{data}: atualização realizada") # Log
         else:
-            await ctx.send("Palavra-chave inválida, digite ela novamente")
+            await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o padrão regex não for respeitado
+    # Se algo estiver errado, essa mensagem será retornada
     except:
          await ctx.send("Não foi possível atualizar, verifique se preencheu a segunda linha com seu login")
 
@@ -184,20 +182,21 @@ async def atualizar(ctx):
 @client.command()
 async def ver(ctx):
     try:
-        msg = str(ctx.message.content)
-        z = msg.splitlines()
-        tab = z[1]
-        conn = sqlite3.connect("base.db")
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT login FROM {tab}")
-        rs = cursor.fetchall()
-        conn.commit()
-        conn.close()
-        cont = 1
-        for row in rs:
-            await ctx.send(f"Essa é a sua senha número {cont}: " + " | ".join(row))
-            cont = cont + 1
-        logger.info(f"{data}: resquisição de tabela realizada")
+        msg = str(ctx.message.content) # Mensagem do usuário
+        z = msg.splitlines() # Divisão em lista
+        tab = z[1] # Nome do cofre
+        conn = sqlite3.connect("base.db") # Conexão
+        cursor = conn.cursor() # Cursor
+        cursor.execute(f"SELECT login FROM {tab}") # Seleciona todos os logins do cofre (somente os logins)
+        rs = cursor.fetchall() # Resgate de todos os logins
+        conn.commit() # Gravação
+        conn.close() # Fechamento
+        cont = 1 # Contador
+        for row in rs: # Pra cada linha (login) no resultado
+            await ctx.send(f"Essa é a sua senha número {cont}: " + " | ".join(row)) # Deve se mandar a mensagem com cada login do cofre
+            cont = cont + 1 # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
+        logger.info(f"{data}: resquisição de tabela realizada") # Log
+    # Se a tabela não existir ou estiverem faltando informações, essa mensagem aparecerá
     except:
         await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
 
@@ -205,11 +204,11 @@ async def ver(ctx):
 
 @client.command()
 async def ola(ctx):
-    await ctx.send(f"Olá, para acessar meu guia de uso, digite '?ajuda'")
+    await ctx.send(f"Olá, para acessar meu guia de uso, digite '?ajuda'") # Comando base, geralmente é o primeiro que o usuário deve tentar
 
 
 @client.command()
-async def ajuda(ctx):
+async def ajuda(ctx): # Comando de ajuda que explica como funciona (está em texto, porém quero fazer em imagem)
     await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
@@ -222,7 +221,7 @@ Não é possível colocar uma senha com o mesmo login, se quiser colocar uma out
 
 
 @client.command()
-async def bot(ctx):
+async def bot(ctx): # Explicação do bot, o que ele faz e aviso de atualizações futuras
     await ctx.send(''' Sou SherLock, bot para gerenciamento de senhas o qual utiliza o cliente do Discord \n
 Meu dever é garantir a segurança da sua senha e seu login, 
 em volta à uma internet cheia de hackers e pessoas mal intencionadas \n
@@ -249,7 +248,7 @@ ou nunca sequer pensou em doar para ele, nosso serviço continuará gratuito\n
 Último aviso: Qualquer atualização que meus administradores aplicarem em mim será informada aos usúarios\n''')
 
 @client.command()
-async def dicas(ctx):
+async def dicas(ctx): # Dicas de proteção
     await ctx.send('''Não se preocupe, estou aqui para dar algumas dicas \n
              1- Evite senhas simples (1234, 0123 ou "Seu nome"123) \n
                 'Vejo isso em todo o lugar, porque realmente preciso fazer isso ?'
@@ -269,7 +268,7 @@ async def dicas(ctx):
                 Você pode atualizar ela com o comando ?atualizar, para evitar problemas, nós avisamos que a senha foi cadastrada e deixamos ela ao lado para que o usuário não a esqueça.    
              ''')
 
-load_dotenv()
-token = os.getenv('token')
-if __name__ == "__main__":
+load_dotenv() # Carrega o ambiente onde está o token
+token = os.getenv('token') # Pega o token do ambiente
+if __name__ == "__main__": # Comando que impede a ativação desnecessária do programa
     client.run(token)
