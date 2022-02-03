@@ -1,5 +1,5 @@
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
-# Documentação disponível na página do github (página a ser inserida)
+# Documentação disponível na página do github
 
 # Importação das bibliotecas
 from discord.ext import commands  # Biblioteca do discord
