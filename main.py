@@ -12,15 +12,16 @@ import base64
 import re
 from dotenv import load_dotenv
 import logging
-import datetime as dt
+import time
 
 
 
 # Declaração de variáveis/objetos principais
 
 client = commands.Bot(command_prefix="?")
-nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg"
-data = dt.datetime.now()
+nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg" # Palavras que não podem ser colocadas como senha
+data = time.localtime()
+horas = time.strftime("%H:%M:%S", data)
 logger = logging.getLogger("SHERLOCK")
 
 
@@ -54,7 +55,7 @@ async def criar(ctx):
                         senha text,
                         hash text)''') #Comando SQL
         await ctx.send("Seu cofre foi criado com sucesso") # Envio da mensagem de sucesso
-        logger.info("f{data}: cofre criado") # Log
+        logger.info(f"{horas}: cofre criado") # Log
 
     #Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha, usuário não colocou informações e/ou não colocou as corretas, manda uma mensagem de erro)
     except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
@@ -72,7 +73,7 @@ async def colocar(ctx):
         pt3 = str(x[3]) # # Nome do cofre, aqui será o elemento central, pois ele determinará onde será colocado as informações acima
         pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
         if (re.search(pattern, pt1)): # Se o login seguir o padrão regex, ele vai criar um hash
-            if any(word in msg for word in nao):
+            if any(word in msg for word in nao): # Se alguma palavra que está na tupla de palavras que não podem ser colocadas como uma senha estiverem aqui, ele retorna um erro.
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
@@ -93,7 +94,7 @@ async def colocar(ctx):
                 conn.commit() # Gravação dos resultados
                 conn.close() # Fechamento da conexão
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este- {pt1}") # Mensagem de sucesso
-                logger.info(f"{data}: cadastro realizado") # Log
+                logger.info(f"{horas}: cadastro realizado") # Log
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o login não respeitar o padrão regex, ele retorna essa mensagem
     except Exception:
@@ -127,7 +128,7 @@ async def procurar(ctx):
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8")) # Mensagem de sucesso
         conn.commit() # Gravação
         conn.close() # Fechamento
-        logger.info(f"{data}: requisição realizada") # Log
+        logger.info(f"{horas}: requisição realizada") # Log
 
     # Se os dados não existirem ou se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
     except Exception:
@@ -147,7 +148,7 @@ async def atualizar(ctx):
         pt3_2 = str(x[3]) # Pega o nome do cofre
         pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
         if (re.search(pattern, pt1)): # Se a mensagem respeitar o padrão
-            if any(word in msg for word in nao):
+            if any(word in msg for word in nao): # Se alguma palavra proibida estiver na tupla, retorne um erro
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
@@ -168,7 +169,7 @@ async def atualizar(ctx):
                 conn.commit() # Gravação
                 conn.close() # Fechamento
                 await ctx.author.send("Senha atualizada com sucesso") # Mensagem de sucesso
-                logger.info(f"{data}: atualização realizada") # Log
+                logger.info(f"{horas}: atualização realizada") # Log
         else:
             await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o padrão regex não for respeitado
     # Se algo estiver errado, essa mensagem será retornada
@@ -195,7 +196,7 @@ async def ver(ctx):
         for row in rs: # Pra cada linha (login) no resultado
             await ctx.send(f"Essa é a sua senha número {cont}: " + " | ".join(row)) # Deve se mandar a mensagem com cada login do cofre
             cont = cont + 1 # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
-        logger.info(f"{data}: resquisição de tabela realizada") # Log
+        logger.info(f"{horas}: resquisição de tabela realizada") # Log
     # Se a tabela não existir ou estiverem faltando informações, essa mensagem aparecerá
     except:
         await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
