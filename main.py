@@ -52,7 +52,7 @@ async def on_ready():
 
 @client.command()
 async def criar(ctx):
-    #try:
+    try:
         msg = str(ctx.message.content) # Declaração da varíavel central que pega o conteúdo da mensagem
         y = msg.splitlines() # Seperação conteúdo, cada palavra em uma nova linha será armazaenada como um elemento de uma lista
         nome = y[1] # Apanhado do primeiro elemento da lista
@@ -62,10 +62,11 @@ async def criar(ctx):
                         senha text,
                         hash BLOB)''') #Comando SQL
         await ctx.send("Seu cofre foi criado com sucesso") # Envio da mensagem de sucesso
+        conn.commit()
         logger.info(f"{horas}: cofre criado") # Log
 
     #Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha, usuário não colocou informações e/ou não colocou as corretas, manda uma mensagem de erro)
-    #except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
+    except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
 '''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
 
 '''-------------------------COMANDO DE COLOCAR------------------------------'''
@@ -97,8 +98,7 @@ async def colocar(ctx):
                 nova_senha = t.encrypt(pt2)  # Senha criptografada
                 sql_query = f"INSERT INTO `{pt3}`(`login`,`senha`,`hash`) VALUES (%s,%s,%s)"
                 cursor.execute(sql_query,(pt1,nova_senha.decode("utf-8"),key)) # Cadastro do login, senha e hash
-                conn.commit() # Gravação dos resultados
-                conn.close() # Fechamento da conexão
+                conn.commit() # Gravação dos resultados # Fechamento da conexão
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este: {pt1}") # Mensagem de sucesso
                 logger.info(f"{horas}: cadastro realizado") # Log
         else:
@@ -132,8 +132,7 @@ async def procurar(ctx):
         t = f(base64.urlsafe_b64encode(key)) # Codifica a chave
         senha_descriptografada = t.decrypt(senha_criptografada.encode("UTF-8")) # Agora com a chave, descriptografa a senha retornada anteriormente
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8")) # Mensagem de sucesso
-        conn.commit() # Gravação
-        conn.close() # Fechamento
+        conn.commit() # Gravação # Fechamento
         logger.info(f"{horas}: requisição realizada") # Log
 
      # Se os dados não existirem ou se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
@@ -145,41 +144,18 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
-async def atualizar(ctx):
-    #try:
+async def deletar(ctx):
+    try:
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
         pt1 = str(x[1]) # Pega o login
-        pt2 = (x[2].encode("utf-8")) # Pega a senha que vai substituir a passada
-        pt3_2 = str(x[3]) # Pega o nome do cofre
-        pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
-        if (re.search(pattern, pt1)): # Se a mensagem respeitar o padrão
-            if any(word in msg for word in nao): # Se alguma palavra proibida estiver na tupla, retorne um erro
-                await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
-                               "digite uma senha sem extensão de arquivo ou protocolo web (http)")
-
-            else:
-                salt = os.urandom(256)
-                main_hash = PBKDF2HMAC(
-                    algorithm=hashes.SHA256(),
-                    length=32,
-                    salt=salt,
-                    iterations=320000,
-                )
-                key = (main_hash.derive(pt2))  # Geração da chave
-                t = f(base64.urlsafe_b64encode(key))  # Codificação da chave
-                nova_senha = t.encrypt(pt2)  # Criptografia da senha
-                sql_query = f"UPDATE {pt3_2} SET senha = (%s), hash = (%s) WHERE login = (%s)"  # Substituição da senha
-                cursor.execute(sql_query, (pt1, nova_senha.decode("utf-8"), key))
-                conn.commit() # Gravação
-                conn.close() # Fechamento
-                await ctx.author.send("Senha atualizada com sucesso") # Mensagem de sucesso
-                logger.info(f"{horas}: atualização realizada") # Log
-        else:
-            await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o padrão regex não for respeitado
-    # Se algo estiver errado, essa mensagem será retornada
-    #except:
-     #    await ctx.send("Não foi possível atualizar, verifique se preencheu a segunda linha com seu login")
+        pt2 = (x[2]) # Pega a tabela que vai substituir a passada
+        sql_query = f"DELETE IF EXISTS FROM {pt2} WHERE login = (%s)"
+        cursor.execute(sql_query,pt1)
+        conn.commit()
+        await ctx.send("Senha deletada com sucesso")
+    except Exception:
+        await ctx.send("Não foi possível deletar a senha")
 
 '''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
 
@@ -187,7 +163,7 @@ async def atualizar(ctx):
 
 @client.command()
 async def ver(ctx):
-    #try:
+    try:
         msg = str(ctx.message.content) # Mensagem do usuário
         z = msg.splitlines() # Divisão em lista
         tab = z[1] # Nome do cofre
@@ -203,8 +179,8 @@ async def ver(ctx):
             cont = cont + 1 # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
         logger.info(f"{horas}: resquisição de tabela realizada") # Log
     # Se a tabela não existir ou estiverem faltando informações, essa mensagem aparecerá
-    #except:
-     #   await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
+    except:
+        await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
 
 '''-------------------------FIM DO COMANDO DE VER------------------------------'''
 
