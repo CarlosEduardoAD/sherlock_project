@@ -41,6 +41,7 @@ file = logging.FileHandler("logs.log")
 file.setLevel(logging.INFO)
 logger.addHandler(file)
 
+'''-------------------------ÍNICIO DA APLICAÇÃO-----------------------------'''
 
 # Checagem de disponibilidade do bot
 @client.event
@@ -67,6 +68,7 @@ async def criar(ctx):
 
     #Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha, usuário não colocou informações e/ou não colocou as corretas, manda uma mensagem de erro)
     except: await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
+
 '''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
 
 '''-------------------------COMANDO DE COLOCAR------------------------------'''
@@ -144,45 +146,39 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
-async def deletar(ctx):
+async def deletarever(ctx):
     try:
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
         pt1 = str(x[1]) # Pega o login
-        pt2 = (x[2]) # Pega a tabela que vai substituir a passada
-        sql_query = f"DELETE IF EXISTS FROM {pt2} WHERE login = (%s)"
-        cursor.execute(sql_query,pt1)
-        conn.commit()
-        await ctx.send("Senha deletada com sucesso")
+        pt2 = (x[2]) # Pega a tabela
+        sql_query = f"DELETE FROM {pt2} WHERE login = %s" # Query para deletar a senha, se não existir, ela prossegue mesmo assim
+        cursor.execute(sql_query, pt1) #Execução da query
+        conn.commit() # Gravação
+        ''' O comando abaixo seleciona todos os logins para 
+            caso o usuário tenha errado a digitação da senha e a senha 
+            não tenha sido deletada, para questão de segurança e para ele 
+            ter uma noção de quantas senhas ele tem'''
+        sql_query = f"SELECT login FROM {pt2}"
+        cursor.execute(sql_query)  # Seleciona todos os logins do cofre (somente os logins)
+        rs = (cursor.fetchall())  # Resgate de todos os logins
+        conn.commit()  # Gravação
+        conn.close()  # Fechamento
+        cont = 1  # Contador
+        await ctx.send("Confira se sua senha foi deletada por segurança, se não, digite novamente o comando")
+        for i in rs: # Para cada chave no dicionário (objeto) retornado pelo SQL
+            resultados = (i["login"]) # Os resultados serão iguais ao valor do login
+            await ctx.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
+            cont = cont + 1  # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
+        logger.info(f"{horas}: resquisição de tabela realizada")  # Log
+        await ctx.send("Confira se sua senha foi deletada por segurança, se não, digite novamente o comando")
+
     except Exception:
-        await ctx.send("Não foi possível deletar a senha")
+        await ctx.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
 
 '''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
 
-'''-------------------------COMANDO DE VER------------------------------'''
-
-@client.command()
-async def ver(ctx):
-    try:
-        msg = str(ctx.message.content) # Mensagem do usuário
-        z = msg.splitlines() # Divisão em lista
-        tab = z[1] # Nome do cofre
-        sql_query = f"SELECT login FROM {tab}"
-        cursor.execute(sql_query) # Seleciona todos os logins do cofre (somente os logins)
-        rs = (cursor.fetchall()) # Resgate de todos os logins
-        conn.commit() # Gravação
-        conn.close() # Fechamento
-        cont = 1 # Contador
-        for i in rs:
-            resultados = (i["login"])
-            await ctx.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
-            cont = cont + 1 # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
-        logger.info(f"{horas}: resquisição de tabela realizada") # Log
-    # Se a tabela não existir ou estiverem faltando informações, essa mensagem aparecerá
-    except:
-        await ctx.send(f"Por favor, digite um nome de um cofre válido ou de um cofre existente, caso ele ainda não exista, use o comando ?criar")
-
-'''-------------------------FIM DO COMANDO DE VER------------------------------'''
+'''-------------------------FIM DA APLICAÇÃO------------------------------'''
 
 @client.command()
 async def ola(ctx):
