@@ -50,23 +50,25 @@ async def on_ready():
 @client.command()
 async def criar(ctx):
     try:
-
         msg = str(ctx.message.content) # Declaração da varíavel central que pega o conteúdo da mensagem
         y = msg.splitlines() # Seperação conteúdo, cada palavra em uma nova linha será armazaenada como um elemento de uma lista
-        nome = y[1] # Apanhado do primeiro elemento da lista
-        cursor.execute(f'''CREATE TABLE IF NOT EXISTS {nome}(
+        tabela = y[1] # Apanhado do primeiro elemento da lista
+        cursor.execute(f'''CREATE TABLE IF NOT EXISTS {tabela}(
                         id integer NOT NULL AUTO_INCREMENT PRIMARY KEY, 
                         login text NOT NULL,
                         senha text,
-                        hash BLOB)''') #Comando SQL
+                        hash BLOB)''')
         await ctx.send("Seu cofre foi criado com sucesso") # Envio da mensagem de sucesso
         conn.commit() # Gravação dos dados
         logger.info(f"{horas}: cofre criado") # Log
 
-
-    #Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha e/ou usuário não colocou informações, manda uma mensagem de erro)
+    # Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha e/ou usuário não colocou informações, manda uma mensagem de erro)
     except IndexError:
-        await ctx.send("Não foi possível criar seu cofre, verifique se preencheu as informações da forma correta")
+        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência \n"
+                       "1- O comando '?criar'\n"
+                       "2- O nome do cofre que você quer colocar")
+    except Exception:
+        await ctx.send("Não foi possível criar seu cofre, verifique se as informações estão corretas")
 
 '''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
 
@@ -103,10 +105,10 @@ async def colocar(ctx):
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este: {pt1}") # Mensagem de sucesso
                 logger.info(f"{horas}: cadastro realizado") # Log
         else:
-            await ctx.send("Palavra-chave inválida, digite ela novamente") # Se o login não  respeitar o padrão regex, ele retorna essa mensagem
+            await ctx.send("Palavra-chave inválida, você não pode digitar espaços, precisa separar por um hífen e só pode colocar números depois do hífen") # Se o login não  respeitar o padrão regex, ele retorna essa mensagem
     except IndexError: # Se o usuário tiver esquecido de colocar algo, retorna esse erro
         await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-                       "1- O nome do comando \n"
+                       "1- O comando '?colocar'\n"
                        "2- Seu login \n"
                        "3- Sua senha \n"
                        "4- O nome do seu cofre")
@@ -145,10 +147,9 @@ async def procurar(ctx):
      # Se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
     except IndexError:
         await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-                       "1- O nome do comando \n"
+                       "1- O comando '?procurar' \n"
                        "2- Seu login \n"
-                       "3- Sua senha \n"
-                       "4- O nome do seu cofre")
+                       "3- O nome do seu cofre")
     # Caso contrário os elementos não existam, retorna essa mensagem
     except Exception:
         await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
@@ -158,7 +159,7 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 
 '''-------------------------COMANDO DE ATUALIZAR------------------------------'''
 @client.command()
-async def deletarever(ctx): # Aqui a porca torce o rabo
+async def deletar(ctx): # Aqui a porca torce o rabo
     try:
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
@@ -166,38 +167,50 @@ async def deletarever(ctx): # Aqui a porca torce o rabo
         pt2 = (x[2]) # Pega a tabela
         sql_query = f"DELETE FROM {pt2} WHERE login = %s" # Query para deletar a senha, se não existir, ela prossegue mesmo assim
         cursor.execute(sql_query, pt1) #Execução da query
-        conn.commit() # Gravação
-        ''' O comando abaixo seleciona todos os logins para 
-            caso o usuário tenha errado a digitação da senha e a senha 
-            não tenha sido deletada, por que por algum motivo muito interessante 
-            o mysql não retorna um erro se a senha não existe (mesma coisa acontece com o select puro) 
-            e por enquanto essa é a solução, pelo menos o usuário vai ter uma noção de quantas senhas ele tem'''
+        if cursor.rowcount > 0:
+            await ctx.send("Foi deletado")
+            conn.commit()  # Gravação
+        else:
+            await ctx.send("Não")
+    except IndexError: # Se estiver faltando algum elemento, retorna essa mensagem
+        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+                       "1- O comando '?deletar' \n"
+                       "2- Seu login \n"
+                       "3- O nome do seu cofre")
+    # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
+    except Exception:
+        await ctx.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
+
+'''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
+
+'''-------------------------COMANDO DE VER------------------------------'''
+
+@client.command()
+async def ver (ctx):
+    try:
+        msg = (str(ctx.message.content))  # Mensagem do usuário
+        x = msg.splitlines()  # Divisão em lista
+        pt2 = str(x[1])  # Pega a tabela
         sql_query = f"SELECT login FROM {pt2}" # Query para selecionar os logins
         cursor.execute(sql_query)  # Seleciona todos os logins do cofre (somente os logins)
         rs = (cursor.fetchall())  # Resgate de todos os logins
         conn.commit()  # Gravação
         conn.close()  # Fechamento
         cont = 1  # Contador
-        await ctx.send("Confira se sua senha foi deletada por segurança, se não, digite novamente o comando") # Primeiro aviso
         for i in rs: # Para cada chave no dicionário (objeto) retornado pelo SQL
             resultados = (i["login"]) # Os resultados serão iguais ao valor do login
             await ctx.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
             cont = cont + 1  # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
         logger.info(f"{horas}: resquisição de tabela realizada")  # Log
-        await ctx.send("Confira se sua senha foi deletada por segurança, se não, digite novamente o comando") # Segundo aviso
-
+    # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
     except IndexError: # Se estiver faltando algum elemento, retorna essa mensagem
         await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-                       "1- O nome do comando \n"
-                       "2- Seu login \n"
-                       "3- Sua senha \n"
-                       "4- O nome do seu cofre")
-
-    # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
+                       "1- O comando '?ver' \n"
+                       "2- O nome do seu cofre")
     except Exception:
-        await ctx.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
+        await ctx.send("Não foi possível deletar a senha")  # Caso falte nome da tabela ou o nome do comando esteja errado
 
-'''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
+'''-------------------------FIM DO COMANDO DE VER------------------------------'''
 
 '''-------------------------FIM DA APLICAÇÃO------------------------------'''
 
@@ -284,3 +297,7 @@ load_dotenv() # Carrega o ambiente onde está o token
 token = os.getenv('token') # Pega o token do ambiente
 if __name__ == "__main__": # Comando que impede a ativação desnecessária do programa
     client.run(token)
+
+
+
+
