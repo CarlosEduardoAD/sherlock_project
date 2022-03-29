@@ -1,35 +1,34 @@
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
 # Documentação disponível na página do github
 
+import base64  # Ferramenta de Codificação
+import logging  # Ferramenta de log (rlx q aqui não tem log4shell ok)
+import os  # Usado simplesmente para gerar caractéres aleatórios
+import re  # Ferramenta de REGEX
+import time  # Ferramenta de tempo
+
+import bcrypt
+import discord  # Importação da biblioteca do discord para ativação dos intents
+from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
+from cryptography.hazmat.primitives import hashes  # Importação da biblioteca de Hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC  # Importação do algoritmo de criptografia
 # Importação das bibliotecas
 from discord.ext import commands  # Biblioteca do discord
-from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
-from cryptography.hazmat.primitives import hashes # Importação da biblioteca de Hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC # Importação do algoritmo de criptografia
-import os # Usado simplesmente para gerar caractéres aleatórios
-import base64 # Ferramenta de Codificação
-import re # Ferramenta de REGEX
-from dotenv import load_dotenv # Ferramenta de ambiente
-import logging # Ferramenta de log (rlx q aqui não tem log4shell ok)
-import time # Ferramenta de tempo
-import pymysql as mariadb # Conector do mysql (disfarçado de maria db ;) )
+from dotenv import load_dotenv  # Ferramenta de ambiente
+from pymysqlpool.pool import Pool as mariadb  # Ferramenta de conexão pool com o banco de dados
 
 # Declaração de variáveis/objetos principais
 
-client = commands.Bot(command_prefix="?") # Quando alguém for digitar um comando, ele precisa digitar com um ponto de interrogação antes
-nao = "http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg" # Palavras que não podem ser colocadas como senha
+intents = discord.Intents.default() #Declaração do objeto dos intents
+intents.members = True # Permite o acesso aos membros do servidor
+client = commands.Bot(command_prefix="?", intents=intents) # Quando alguém for digitar um comando, ele precisa digitar com um ponto de interrogação antes
+nao = ("http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg") # Palavras que não podem ser colocadas como senha
 data = time.localtime() # Data local para log
 horas = time.strftime("%H:%M:%S", data) # Formatação da data
 logger = logging.getLogger("SHERLOCK") # Criação do objeto que pega o logger do Sherlock
-
-#Conexão com Base de dados
-conn = mariadb.connect(host='localhost',
-                       user='carlo',
-                       password='carloseduardo0814',
-                       database='sherlock',
-                       cursorclass = mariadb.cursors.DictCursor)
-# Declaração do objeto do cursor
-cursor = conn.cursor()
+load_dotenv() # Carrega o ambiente onde está o token
+token = os.getenv('token') # Pega o token do ambiente
+senha_watch = os.getenv('senha_watch') # Pega a senha do watchdog
 
 #Configuração do Logging
 logging.basicConfig(filename = "logs.log", level=logging.INFO)
@@ -37,38 +36,69 @@ file = logging.FileHandler("logs.log")
 file.setLevel(logging.INFO)
 logger.addHandler(file)
 
+# Configuração do banco de dados
+
+pool = mariadb(host='localhost', user='watchdog', password='desmasiadostrintaecincose357', database='notsaw')
+conn = pool.get_conn()
 '''-------------------------ÍNICIO DA APLICAÇÃO-----------------------------'''
 
 # Checagem de disponibilidade do bot
-@client.event
+@client.event # Evento do bot (não é ativado por trigger)
 async def on_ready():
-    print("Bot is ready")
-    logger.info("Bot está pronto")
+    print("Bot está pronto") #Se o bot estiver apto para se conectar, só printe que ele está pronto
+    logger.info("Bot está pronto") # Log
+
+@client.command() # Evento do bot (não é ativado por trigger)
+async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele, ele já vai criar a conta automaticamente
+    try:
+        a = ctx.author # O cliente do discord pega o canal com base no id
+        nome_do_usuario = str(a.name) # Pega o nome do usuário e codifica ele para bytes
+        member_id = (a.id) # Pega o id do usuário
+        senha = str(member_id)[::-1].encode("UTF-8") # Criação do hash, a partir do nome do usuário
+        salt = bcrypt.gensalt(rounds=12) # Geração do salt
+        senha_hasehada = bcrypt.hashpw(senha, salt) # Criptografia da senha
+        cursor = conn.cursor()  # Declaração do objeto do cursor
+        sql_query = "INSERT INTO users(id_discord, username, password) VALUES(%s, %s, %s)"
+        cursor.execute(sql_query, (member_id, nome_do_usuario, senha_hasehada)) # Execução da query
+        conn.commit()
+        conn.close() # Fecha a conexão  com o banco de dados
+        await ctx.send(f"Seja bem vindo {a.name}, sua conta já foi criada com sucesso") # Manda pro usuário que a conta já foi criada
+    except Exception as e:
+        print(e)
+        await ctx.send("Por onde andava ? Que seja, bem vindo novamente, sua conta já está criada")
 
 '''-------------------------COMANDO DE CRIAR------------------------------'''
 
 @client.command()
-async def criar(ctx):
+async def criar_cofre(ctx):
     try:
-        msg = str(ctx.message.content) # Declaração da varíavel central que pega o conteúdo da mensagem
-        y = msg.splitlines() # Seperação conteúdo, cada palavra em uma nova linha será armazaenada como um elemento de uma lista
-        tabela = y[1] # Apanhado do primeiro elemento da lista
-        cursor.execute(f'''CREATE TABLE IF NOT EXISTS {tabela}(
-                        id integer NOT NULL AUTO_INCREMENT PRIMARY KEY, 
-                        login text NOT NULL,
-                        senha text,
-                        hash BLOB)''')
-        await ctx.send("Seu cofre foi criado com sucesso") # Envio da mensagem de sucesso
-        conn.commit() # Gravação dos dados
-        logger.info(f"{horas}: cofre criado") # Log
-
+        msg = ctx.message.content.splitlines()
+        cofre = msg[1]
+        cursor = conn.cursor()
+        id = ctx.author.id
+        watchdog_query = "SELECT username, password from users where id_discord = %s"
+        cursor.execute(watchdog_query, (id,))
+        a = cursor.fetchone()
+        usuario = a["username"]
+        senha = a["password"]
+        if not bcrypt.checkpw(str(id)[::-1].encode("UTF-8"), senha):
+            await ctx.send("Você não tem permissão para fazer esse comando")
+        await ctx.send(f"{usuario}, {senha}")
+        conn.commit()
+        # Declaração do objeto do cursor
+        sql = "INSERT INTO cofre(safe_name, user) VALUES(%s, %s)" # Query para inserção de dados
+        cursor.execute(sql, (cofre, usuario)) # Execução da query
+        conn.commit()
+        await ctx.send("Seu cofre foi criado com sucesso, não esqueça o nome dele")
     # Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha e/ou usuário não colocou informações, manda uma mensagem de erro)
     except IndexError:
-        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência \n"
+        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, por favor siga esta sequência \n"
                        "1- O comando '?criar'\n"
                        "2- O nome do cofre que você quer colocar")
-    except Exception:
-        await ctx.send("Não foi possível criar seu cofre, verifique se as informações estão corretas")
+    except Exception as e:
+        await ctx.send(e)
+        await ctx.author.send("Não foi possível criar seu cofre, verifique se as informações estão corretas")
+
 
 '''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
 
@@ -77,47 +107,51 @@ async def criar(ctx):
 @client.command()
 async def colocar(ctx):
     try:
+        # Declaração do objeto do cursor
+        cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Apanhado do countéudo
+        Id = ctx.author.id
         x = msg.splitlines() # Divisão do countéudo em lista
-        pt1 = str(x[1]) # Apanhado do primeiro elemento, esse será o login
-        pt2 = (x[2].encode("utf-8")) # Apanhado do segundo elemento, esse será a senha a ser criptografada
-        pt3 = str(x[3]) # # Nome do cofre, aqui será o elemento central, pois ele determinará onde será colocado as informações acima
-        pattern = "[a-zA-Z0-9]+\-[0-9]" # Padrão regex
+        pt1 = (x[1]) # Apanhado do primeiro elemento, esse será a senha a ser criptografada
+        pt2 = (x[2]) # Apanhado do segundo elemento, esse será o nome do cofre
+        pattern = "[a-zA-Z]+[0-9]" # Padrão regex
         if (re.search(pattern, pt1)): # Se o login seguir o padrão regex, ele vai criar um hash
             if any(word in msg for word in nao): # Se alguma palavra que está na tupla de palavras que não podem ser colocadas como uma senha estiverem aqui, ele retorna um erro.
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                salt = os.urandom(256)  # Salt
+                salt = (os.urandom(256))  # Salt
                 main_hash = PBKDF2HMAC(
                     algorithm=hashes.SHA256(), # Algoritmo de criptografia
                     length=32, # Vai ter um tamanho de 32 bits
                     salt=salt, # O salt é igual aos números aleatórios lá da variável
                     iterations=320000, # Ele vai fazer 320000 iterações para criar a chave
                 )  # Resumo: Criação do hash (utiliza tecnologia sha256 como descrito nos argumentos)
-                key = (main_hash.derive(pt2))  # Geração da chave
+                key = (main_hash.derive(pt1.encode("UTF-8")))  # Geração da chave
                 t = f(base64.urlsafe_b64encode(key))  # Codificação da chave em base64 (pra "binarizar")
-                nova_senha = t.encrypt(pt2)  # Senha criptografada
-                sql_query = f"INSERT INTO `{pt3}`(`login`,`senha`,`hash`) VALUES (%s,%s,%s)" # Query para colocar o login, a senha, e o hash
-                cursor.execute(sql_query,(pt1,nova_senha.decode("utf-8"),key)) # Cadastro do login, senha e hash
+                nova_senha = t.encrypt(pt1.encode("UTF-8")) # Senha criptografada
+                sql_query = f"INSERT INTO passwords(`id_discord`,`user_password`,`hash`) VALUES (%s,%s,%s)" # Query para colocar o login, a senha, e o hash
+                cursor.execute(sql_query,(Id ,nova_senha,key)) # Cadastro do login, senha e hash
                 conn.commit() # Gravação dos resultados # Fechamento da conexão
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este: {pt1}") # Mensagem de sucesso
                 logger.info(f"{horas}: cadastro realizado") # Log
         else:
-            await ctx.send("Palavra-chave inválida, você não pode digitar espaços, precisa separar por um hífen e só pode colocar números depois do hífen") # Se o login não  respeitar o padrão regex, ele retorna essa mensagem
-    except IndexError: # Se o usuário tiver esquecido de colocar algo, retorna esse erro
-        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-                       "1- O comando '?colocar'\n"
-                       "2- Seu login \n"
-                       "3- Sua senha \n"
-                       "4- O nome do seu cofre")
-    except Exception:
-         #Se algo estiver errado com a mensagem do usuário, essa mensagem é retornada
-        await ctx.send("Não foi possível cadastrar sua senha, "
-                       "1- Veja se não colocou arquivos ou links da web\n"
-                       "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
-                       "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
+            await ctx.author.send("Palavra-chave inválida, você não pode digitar espaços, precisa separar por um hífen e só pode colocar números depois do hífen") # Se o login não  respeitar o padrão regex, ele retorna essa mensagem
+    #except IndexError: # Se o usuário tiver esquecido de colocar algo, retorna esse erro
+      #  await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+       #                       "1- O comando '?colocar'\n"
+        #                      "2- Seu login \n"
+         #                     "3- Sua senha \n"
+          #                    "4- O nome do seu cofre")
+    except Exception as e: # Se alguma coisa não estiver certa na mensagem, retorna esse erro
+        await ctx.send(e)
+        await ctx.author.send("Não foi possível colocar sua senha, verifique se as informações estão corretas")
+        #Se algo estiver errado com a mensagem do usuário, essa mensagem é retornada
+     #   await ctx.author.send("Não foi possível cadastrar sua senha, "
+      #                        "1- Veja se não colocou arquivos ou links da web\n"
+       #                       "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
+        #                      "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
 
 '''-------------------------FIM DO COMANDO DE COLOCAR------------------------------'''
 
@@ -126,6 +160,13 @@ async def colocar(ctx):
 @client.command(pass_context=True)
 async def procurar(ctx):
     try:
+        conn = mariadb.connect(host='localhost',
+                               user='watchdog',
+                               password=senha_watch,
+                               database='sherlock',
+                               cursorclass=mariadb.cursors.DictCursor)
+        # Declaração do objeto do cursor
+        cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
         pc = str(x[1]) # Pega o login
@@ -144,15 +185,15 @@ async def procurar(ctx):
         conn.commit() # Gravação
         logger.info(f"{horas}: requisição realizada") # Log
 
-     # Se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
+    # Se faltar alguma informação na hora de realizar o comando, essa mensagem é retornada
     except IndexError:
-        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-                       "1- O comando '?procurar' \n"
-                       "2- Seu login \n"
-                       "3- O nome do seu cofre")
+        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+                              "1- O comando '?procurar' \n"
+                              "2- Seu login \n"
+                              "3- O nome do seu cofre")
     # Caso contrário os elementos não existam, retorna essa mensagem
-    except Exception:
-        await ctx.send('''Pelo visto o senhor não cadastrou essa senha,
+    except mariadb.OperationalError:
+        await ctx.author.send('''Pelo visto o senhor não cadastrou essa senha,
 cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
 '''-------------------------FIM DO COMANDO DE PROCURAR------------------------------'''
@@ -161,6 +202,13 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 @client.command()
 async def deletar(ctx): # Aqui a porca torce o rabo
     try:
+        conn = mariadb.connect(host='localhost',
+                               user='watchdog',
+                               password=senha_watch,
+                               database='sherlock',
+                               cursorclass=mariadb.cursors.DictCursor)
+        # Declaração do objeto do cursor
+        cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
         pt1 = str(x[1]) # Pega o login
@@ -171,15 +219,15 @@ async def deletar(ctx): # Aqui a porca torce o rabo
             await ctx.send("Foi deletado")
             conn.commit()  # Gravação
         else:
-            await ctx.send("Não")
+            await ctx.author.send("Não")
     except IndexError: # Se estiver faltando algum elemento, retorna essa mensagem
-        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
                        "1- O comando '?deletar' \n"
                        "2- Seu login \n"
                        "3- O nome do seu cofre")
     # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
-    except Exception:
-        await ctx.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
+    except mariadb.OperationalError:
+        await ctx.author.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
 
 '''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
 
@@ -188,6 +236,13 @@ async def deletar(ctx): # Aqui a porca torce o rabo
 @client.command()
 async def ver (ctx):
     try:
+        conn = mariadb.connect(host='localhost',
+                               user='watchdog',
+                               password=senha_watch,
+                               database='sherlock',
+                               cursorclass=mariadb.cursors.DictCursor)
+        # Declaração do objeto do cursor
+        cursor = conn.cursor()
         msg = (str(ctx.message.content))  # Mensagem do usuário
         x = msg.splitlines()  # Divisão em lista
         pt2 = str(x[1])  # Pega a tabela
@@ -197,18 +252,18 @@ async def ver (ctx):
         conn.commit()  # Gravação
         conn.close()  # Fechamento
         cont = 1  # Contador
-        for i in rs: # Para cada chave no dicionário (objeto) retornado pelo SQL
-            resultados = (i["login"]) # Os resultados serão iguais ao valor do login
-            await ctx.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
+        for i in rs:  # Para cada chave no dicionário (objeto) retornado pelo SQL
+            resultados = (i["login"])  # Os resultados serão iguais ao valor do login
+            await ctx.author.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
             cont = cont + 1  # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
         logger.info(f"{horas}: resquisição de tabela realizada")  # Log
     # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
     except IndexError: # Se estiver faltando algum elemento, retorna essa mensagem
-        await ctx.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
                        "1- O comando '?ver' \n"
                        "2- O nome do seu cofre")
-    except Exception:
-        await ctx.send("Não foi possível deletar a senha")  # Caso falte nome da tabela ou o nome do comando esteja errado
+    except mariadb.OperationalError:
+        await ctx.author.send("Não foi possível deletar a senha")  # Caso falte nome da tabela ou o nome do comando esteja errado
 
 '''-------------------------FIM DO COMANDO DE VER------------------------------'''
 
@@ -222,19 +277,19 @@ async def on_command_error (ctx,error):
         msg = str(ctx.message.content)
         x = msg.splitlines()
         comando_errado = x[0]
-        await ctx.send(f" '{comando_errado}' ? Esse comando não existe, por favor, digite um que eu conheça \n"
+        await ctx.author.send(f" '{comando_errado}' ? Esse comando não existe, por favor, digite um que eu conheça \n"
                        f"lembrando que meus comandos são, '?colocar', '?procurar' e '?deletarever'")
 
 '''-------------------------FIM DO ERROR HANDLING------------------------------'''
 
 @client.command()
 async def ola(ctx): # Comando central
-    await ctx.send(f"Olá, para acessar meu guia de uso, digite '?ajuda'")
+    await ctx.author.send(f"Olá, para acessar meu guia de uso, digite '?ajuda'")
 
 
 @client.command()
 async def ajuda(ctx): # Comando de ajuda que explica como funciona (está em texto, porém quero fazer em imagem)
-    await ctx.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
+    await ctx.author.send('''Para colocar uma senha, digite '?colocar', e em seguida digite o comando shift 
 enter para pular uma linha, na primeira linha você colocará o seu login, na segunda, sua senha. \n
 Para ver suas senhas, digite '?procurar', e em seguida, aperte barra de espaço e escreva o seu login. \n 
 Asseguramos que você utilize o bot mandando MENSAGENS DIRETAS para ele, e NÃO usando o CHAT DO SERVIDOR, não se dá para confiar 100% em todos em servidores públicos \n
@@ -247,7 +302,7 @@ Não é possível colocar uma senha com o mesmo login, se quiser colocar uma out
 
 @client.command()
 async def bot(ctx): # Explicação do bot, o que ele faz e aviso de atualizações futuras
-    await ctx.send(''' Sou SherLock, bot para gerenciamento de senhas o qual utiliza o cliente do Discord \n
+    await ctx.author.send(''' Sou SherLock, bot para gerenciamento de senhas o qual utiliza o cliente do Discord \n
 Meu dever é garantir a segurança da sua senha e seu login, 
 em volta à uma internet cheia de hackers e pessoas mal intencionadas \n
 Todas as senhas são criptogradas com chaves de alta segurança para garantir que os dados sejam bem protegeidos \n
@@ -274,7 +329,7 @@ ou nunca sequer pensou em doar para ele, nosso serviço continuará gratuito\n
 
 @client.command()
 async def dicas(ctx): # Dicas de proteção
-    await ctx.send('''Não se preocupe, estou aqui para dar algumas dicas \n
+    await ctx.author.send('''Não se preocupe, estou aqui para dar algumas dicas \n
              1- Evite senhas simples (1234, 0123 ou "Seu nome"123) \n
                 'Vejo isso em todo o lugar, porque realmente preciso fazer isso ?'
                 Não que seja estritamente necessário, porém é o mais recomendado \n
@@ -293,8 +348,6 @@ async def dicas(ctx): # Dicas de proteção
                 Você pode ver suas senhas usando o comando deletarever e se for preciso, deletar ou só manter uma delas
              ''')
 
-load_dotenv() # Carrega o ambiente onde está o token
-token = os.getenv('token') # Pega o token do ambiente
 if __name__ == "__main__": # Comando que impede a ativação desnecessária do programa
     client.run(token)
 
