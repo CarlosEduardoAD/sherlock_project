@@ -6,12 +6,12 @@ import logging  # Ferramenta de log (rlx q aqui não tem log4shell ok)
 import os  # Usado simplesmente para gerar caractéres aleatórios
 import re  # Ferramenta de REGEX
 import time  # Ferramenta de tempo
-
+from argon2 import PasswordHasher, Type # Ferramenta de criptografia
 import bcrypt
 import discord  # Importação da biblioteca do discord para ativação dos intents
 from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
 from cryptography.hazmat.primitives import hashes  # Importação da biblioteca de Hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC  # Importação do algoritmo de criptografia
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt  # Importação do algoritmo de criptografia
 # Importação das bibliotecas
 from discord.ext import commands  # Biblioteca do discord
 from dotenv import load_dotenv  # Ferramenta de ambiente
@@ -51,12 +51,19 @@ async def on_ready():
 @client.command() # Evento do bot (não é ativado por trigger)
 async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele, ele já vai criar a conta automaticamente
     try:
+        msg = str(ctx.message.content).splitlines()
+        senha = msg[1].encode("utf-8")
         a = ctx.author # O cliente do discord pega o canal com base no id
         nome_do_usuario = str(a.name) # Pega o nome do usuário e codifica ele para bytes
         member_id = (a.id) # Pega o id do usuário
-        senha = str(member_id)[::-1].encode("UTF-8") # Criação do hash, a partir do nome do usuário
-        salt = bcrypt.gensalt(rounds=12) # Geração do salt
-        senha_hasehada = bcrypt.hashpw(senha, salt) # Criptografia da senha
+        hash = PasswordHasher(
+            salt_len=32,
+            hash_len=32,
+            memory_cost=65536,
+            time_cost=4,
+            parallelism=2,type=Type.ID
+        )# Geração do salt
+        senha_hasehada = hash.hash(senha) # Criptografia da senha
         cursor = conn.cursor()  # Declaração do objeto do cursor
         sql_query = "INSERT INTO users(id_discord, username, password) VALUES(%s, %s, %s)"
         cursor.execute(sql_query, (member_id, nome_do_usuario, senha_hasehada)) # Execução da query
@@ -74,20 +81,21 @@ async def criar_cofre(ctx):
     try:
         msg = ctx.message.content.splitlines()
         cofre = msg[1]
+        senha = msg[2]
         cursor = conn.cursor()
         id = ctx.author.id
         watchdog_query = "SELECT username, password from users where id_discord = %s"
         cursor.execute(watchdog_query, (id,))
         a = cursor.fetchone()
         usuario = a["username"]
-        senha = a["password"]
-        if not bcrypt.checkpw(str(id)[::-1].encode("UTF-8"), senha):
+        senha_do_cofre = a["password"]
+        ph = PasswordHasher()
+        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
             await ctx.send("Você não tem permissão para fazer esse comando")
-        await ctx.send(f"{usuario}, {senha}")
         conn.commit()
         # Declaração do objeto do cursor
-        sql = "INSERT INTO cofre(safe_name, user) VALUES(%s, %s)" # Query para inserção de dados
-        cursor.execute(sql, (cofre, usuario)) # Execução da query
+        sql = "INSERT INTO cofre(id_discord, safe_name, user) VALUES(%s, %s, %s)" # Query para inserção de dados
+        cursor.execute(sql, (id, cofre, usuario)) # Execução da query
         conn.commit()
         await ctx.send("Seu cofre foi criado com sucesso, não esqueça o nome dele")
     # Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha e/ou usuário não colocou informações, manda uma mensagem de erro)
@@ -96,7 +104,6 @@ async def criar_cofre(ctx):
                        "1- O comando '?criar'\n"
                        "2- O nome do cofre que você quer colocar")
     except Exception as e:
-        await ctx.send(e)
         await ctx.author.send("Não foi possível criar seu cofre, verifique se as informações estão corretas")
 
 
@@ -110,10 +117,19 @@ async def colocar(ctx):
         # Declaração do objeto do cursor
         cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Apanhado do countéudo
-        Id = ctx.author.id
         x = msg.splitlines() # Divisão do countéudo em lista
-        pt1 = (x[1]) # Apanhado do primeiro elemento, esse será a senha a ser criptografada
-        pt2 = (x[2]) # Apanhado do segundo elemento, esse será o nome do cofre
+        senha = x[1] # Apanhado da senha
+        pt1 = (x[2]) # Apanhado do primeiro elemento, esse será a senha a ser criptografada
+        pt2 = (x[3]) # Apanhado do segundo elemento, esse será o nome do cofre
+        id = ctx.author.id
+        watchdog_query = "SELECT username, password from users where id_discord = %s"
+        cursor.execute(watchdog_query, (id,))
+        a = cursor.fetchone()
+        usuario = a["username"]
+        senha_do_cofre = a["password"]
+        ph = PasswordHasher()
+        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
+            await ctx.send("Você não tem permissão para fazer esse comando")
         pattern = "[a-zA-Z]+[0-9]" # Padrão regex
         if (re.search(pattern, pt1)): # Se o login seguir o padrão regex, ele vai criar um hash
             if any(word in msg for word in nao): # Se alguma palavra que está na tupla de palavras que não podem ser colocadas como uma senha estiverem aqui, ele retorna um erro.
@@ -121,18 +137,18 @@ async def colocar(ctx):
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
 
             else:
-                salt = (os.urandom(256))  # Salt
-                main_hash = PBKDF2HMAC(
-                    algorithm=hashes.SHA256(), # Algoritmo de criptografia
-                    length=32, # Vai ter um tamanho de 32 bits
-                    salt=salt, # O salt é igual aos números aleatórios lá da variável
-                    iterations=320000, # Ele vai fazer 320000 iterações para criar a chave
-                )  # Resumo: Criação do hash (utiliza tecnologia sha256 como descrito nos argumentos)
+                main_hash = Scrypt(
+                    salt = os.urandom(256),
+                     length = 32,
+                     n = 2**14,
+                     r = 8,
+                     p = 1,
+                ) # Resumo: Criação do hash (utiliza tecnologia sha256 como descrito nos argumentos)
                 key = (main_hash.derive(pt1.encode("UTF-8")))  # Geração da chave
                 t = f(base64.urlsafe_b64encode(key))  # Codificação da chave em base64 (pra "binarizar")
                 nova_senha = t.encrypt(pt1.encode("UTF-8")) # Senha criptografada
-                sql_query = f"INSERT INTO passwords(`id_discord`,`user_password`,`hash`) VALUES (%s,%s,%s)" # Query para colocar o login, a senha, e o hash
-                cursor.execute(sql_query,(Id ,nova_senha,key)) # Cadastro do login, senha e hash
+                sql_query = f"INSERT INTO passwords(`password`,`hash`, `cofre`) VALUES (%s,%s,%s)" # Query para colocar o login, a senha, e o hash
+                cursor.execute(sql_query,(nova_senha,key,pt2)) # Cadastro do login, senha e hash
                 conn.commit() # Gravação dos resultados # Fechamento da conexão
                 await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este: {pt1}") # Mensagem de sucesso
                 logger.info(f"{horas}: cadastro realizado") # Log
@@ -160,11 +176,6 @@ async def colocar(ctx):
 @client.command(pass_context=True)
 async def procurar(ctx):
     try:
-        conn = mariadb.connect(host='localhost',
-                               user='watchdog',
-                               password=senha_watch,
-                               database='sherlock',
-                               cursorclass=mariadb.cursors.DictCursor)
         # Declaração do objeto do cursor
         cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Mensagem do usuário
