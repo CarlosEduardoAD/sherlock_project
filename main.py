@@ -7,7 +7,6 @@ import os  # Usado simplesmente para gerar caractéres aleatórios
 import re  # Ferramenta de REGEX
 import time  # Ferramenta de tempo
 from argon2 import PasswordHasher, Type # Ferramenta de criptografia
-import bcrypt
 import discord  # Importação da biblioteca do discord para ativação dos intents
 from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
 from cryptography.hazmat.primitives import hashes  # Importação da biblioteca de Hashes
@@ -38,7 +37,7 @@ logger.addHandler(file)
 
 # Configuração do banco de dados
 
-pool = mariadb(host='localhost', user='watchdog', password='desmasiadostrintaecincose357', database='notsaw')
+pool = mariadb(host='localhost', user='watchdog', password='desmasiadostrintaecincose357', database='baskerville')
 conn = pool.get_conn()
 '''-------------------------ÍNICIO DA APLICAÇÃO-----------------------------'''
 
@@ -55,9 +54,9 @@ async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele
         senha = msg[1].encode("utf-8")
         a = ctx.author # O cliente do discord pega o canal com base no id
         nome_do_usuario = str(a.name) # Pega o nome do usuário e codifica ele para bytes
-        member_id = (a.id) # Pega o id do usuário
+        member_id = str(a.id) # Pega o id do usuário
         hash = PasswordHasher(
-            salt_len=32,
+            salt_len=16,
             hash_len=32,
             memory_cost=65536,
             time_cost=4,
@@ -65,49 +64,14 @@ async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele
         )# Geração do salt
         senha_hasehada = hash.hash(senha) # Criptografia da senha
         cursor = conn.cursor()  # Declaração do objeto do cursor
-        sql_query = "INSERT INTO users(id_discord, username, password) VALUES(%s, %s, %s)"
+        sql_query = "INSERT INTO users(discord_id, name, master_password) VALUES(%s, %s, %s)"
         cursor.execute(sql_query, (member_id, nome_do_usuario, senha_hasehada)) # Execução da query
         conn.commit()
         conn.close() # Fecha a conexão  com o banco de dados
         await ctx.send(f"Seja bem vindo {a.name}, sua conta já foi criada com sucesso") # Manda pro usuário que a conta já foi criada
     except Exception as e:
         print(e)
-        await ctx.send("Por onde andava ? Que seja, bem vindo novamente, sua conta já está criada")
-
-'''-------------------------COMANDO DE CRIAR------------------------------'''
-
-@client.command()
-async def criar_cofre(ctx):
-    try:
-        msg = ctx.message.content.splitlines()
-        cofre = msg[1]
-        senha = msg[2]
-        cursor = conn.cursor()
-        id = ctx.author.id
-        watchdog_query = "SELECT username, password from users where id_discord = %s"
-        cursor.execute(watchdog_query, (id,))
-        a = cursor.fetchone()
-        usuario = a["username"]
-        senha_do_cofre = a["password"]
-        ph = PasswordHasher()
-        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
-            await ctx.send("Você não tem permissão para fazer esse comando")
-        conn.commit()
-        # Declaração do objeto do cursor
-        sql = "INSERT INTO cofre(id_discord, safe_name, user) VALUES(%s, %s, %s)" # Query para inserção de dados
-        cursor.execute(sql, (id, cofre, usuario)) # Execução da query
-        conn.commit()
-        await ctx.send("Seu cofre foi criado com sucesso, não esqueça o nome dele")
-    # Se alguma coisa não estiver certa na mensagem (usuário colocou as informações na mesma linha e/ou usuário não colocou informações, manda uma mensagem de erro)
-    except IndexError:
-        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, por favor siga esta sequência \n"
-                       "1- O comando '?criar'\n"
-                       "2- O nome do cofre que você quer colocar")
-    except Exception as e:
-        await ctx.author.send("Não foi possível criar seu cofre, verifique se as informações estão corretas")
-
-
-'''-------------------------FIM DO COMANDO DE CRIAR------------------------------'''
+        await ctx.send("Por onde andava ? Que seja, bem vindo novamente, sua conta já estava aqui quando verifiquei pela última vez")
 
 '''-------------------------COMANDO DE COLOCAR------------------------------'''
 
@@ -119,19 +83,20 @@ async def colocar(ctx):
         msg = (str(ctx.message.content)) # Apanhado do countéudo
         x = msg.splitlines() # Divisão do countéudo em lista
         senha = x[1] # Apanhado da senha
-        pt1 = (x[2]) # Apanhado do primeiro elemento, esse será a senha a ser criptografada
-        pt2 = (x[3]) # Apanhado do segundo elemento, esse será o nome do cofre
+        pt1 = (x[2]) # login
+        pt2 = (x[3]) # site
+        pt3 = (x[4]) # senha
+        pt4 = (x[5]) # palavra_chave
         id = ctx.author.id
-        watchdog_query = "SELECT username, password from users where id_discord = %s"
+        watchdog_query = "SELECT name, master_password from users where discord_id = %s"
         cursor.execute(watchdog_query, (id,))
         a = cursor.fetchone()
-        usuario = a["username"]
-        senha_do_cofre = a["password"]
+        senha_do_cofre = a["master_password"]
         ph = PasswordHasher()
         if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
-            await ctx.send("Você não tem permissão para fazer esse comando")
+            await ctx.send("Você não tem permissão para fazer esse comando, crie uma conta primeiro por favor")
         pattern = "[a-zA-Z]+[0-9]" # Padrão regex
-        if (re.search(pattern, pt1)): # Se o login seguir o padrão regex, ele vai criar um hash
+        if (re.search(pattern, pt4)): # Se o login seguir o padrão regex, ele vai criar um hash
             if any(word in msg for word in nao): # Se alguma palavra que está na tupla de palavras que não podem ser colocadas como uma senha estiverem aqui, ele retorna um erro.
                 await ctx.send("Com licença, não posso criptografar links ou arquivos, por favor, "
                                "digite uma senha sem extensão de arquivo ou protocolo web (http)")
@@ -143,31 +108,35 @@ async def colocar(ctx):
                      n = 2**14,
                      r = 8,
                      p = 1,
-                ) # Resumo: Criação do hash (utiliza tecnologia sha256 como descrito nos argumentos)
+                ) # Resumo: Criação do hash (utiliza tecnologia scrypt como descrito nos argumentos)
                 key = (main_hash.derive(pt1.encode("UTF-8")))  # Geração da chave
                 t = f(base64.urlsafe_b64encode(key))  # Codificação da chave em base64 (pra "binarizar")
-                nova_senha = t.encrypt(pt1.encode("UTF-8")) # Senha criptografada
-                sql_query = f"INSERT INTO passwords(`password`,`hash`, `cofre`) VALUES (%s,%s,%s)" # Query para colocar o login, a senha, e o hash
-                cursor.execute(sql_query,(nova_senha,key,pt2)) # Cadastro do login, senha e hash
+                nova_senha = t.encrypt(pt3.encode("UTF-8"))
+                site = t.encrypt(pt1.encode("UTF-8"))
+                login = t.encrypt(pt2.encode("UTF-8"))# Senha criptografada
+                sql_query = f"INSERT INTO passwords(`id_discord`,`login`,`site`,`keyword`,`password`, `secret`) VALUES (%s,%s,%s,%s,%s,%s)" # Query para colocar o login, a senha, e o hash
+                cursor.execute(sql_query,(id, login, site, pt4, nova_senha, key)) # Cadastro do login, senha e hash
                 conn.commit() # Gravação dos resultados # Fechamento da conexão
-                await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, seu login é este: {pt1}") # Mensagem de sucesso
+                await ctx.author.send(f"Senha cadastrada com sucesso, não se esqueça, sua palavra-chave é esta: {pt4}") # Mensagem de sucesso
                 logger.info(f"{horas}: cadastro realizado") # Log
         else:
             await ctx.author.send("Palavra-chave inválida, você não pode digitar espaços, precisa separar por um hífen e só pode colocar números depois do hífen") # Se o login não  respeitar o padrão regex, ele retorna essa mensagem
-    #except IndexError: # Se o usuário tiver esquecido de colocar algo, retorna esse erro
-      #  await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
-       #                       "1- O comando '?colocar'\n"
-        #                      "2- Seu login \n"
-         #                     "3- Sua senha \n"
-          #                    "4- O nome do seu cofre")
+    except IndexError: # Se o usuário tiver esquecido de colocar algo, retorna esse erro
+        await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+                              "1- O comando '?colocar'\n"
+                              "2- Sua senha mestra \n"
+                              "3- O seu login (email etc) \n"
+                              "4- O nome do site \n"
+                              "5- A palavra chave que quer guardar para acessar a senha \n"
+                              "6- A sua senha")
     except Exception as e: # Se alguma coisa não estiver certa na mensagem, retorna esse erro
         await ctx.send(e)
         await ctx.author.send("Não foi possível colocar sua senha, verifique se as informações estão corretas")
         #Se algo estiver errado com a mensagem do usuário, essa mensagem é retornada
-     #   await ctx.author.send("Não foi possível cadastrar sua senha, "
-      #                        "1- Veja se não colocou arquivos ou links da web\n"
-       #                       "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
-        #                      "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
+        await ctx.author.send("Não foi possível cadastrar sua senha, "
+                              "1- Veja se não colocou arquivos ou links da web\n"
+                              "2- Observe se preencheu os três campos corretamente (para mais informações digite ajuda)\n"
+                              "3- Verifique se o seu login não é o mesmo do que o de outra pessoa\n")
 
 '''-------------------------FIM DO COMANDO DE COLOCAR------------------------------'''
 
@@ -180,13 +149,21 @@ async def procurar(ctx):
         cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
-        pc = str(x[1]) # Pega o login
-        tab = str(x[2])# Pega o nome do cofre
-        cursor.execute(f"SELECT senha FROM {tab} WHERE login = (%s)", (pc,)) # Procura a senha a partir do login
+        senha = x[1] # Senha
+        pc = str(x[2]) # Pega a palavra-chave
+        id = ctx.author.id
+        watchdog_query = "SELECT name, master_password from users where discord_id = %s"
+        cursor.execute(watchdog_query, (id,))
+        a = cursor.fetchone()
+        senha_do_cofre = a["master_password"]
+        ph = PasswordHasher()
+        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
+            await ctx.send("Você não tem permissão para fazer esse comando, crie uma conta primeiro por favor")
+        cursor.execute(f"SELECT password FROM passwords WHERE keyword = (%s)", (pc,)) # Procura a senha a partir do login
         fetch = cursor.fetchone() # Resgata o resultado
         for item in fetch:
             senha_criptografada = fetch[item] # Resultado é retornado em forma de um dicionário (ou objeto pode ser também), se pega o elemento referente à chave 'login'
-        cursor.execute(f"SELECT hash FROM {tab} WHERE login = (%s)", (pc,)) # Procura o Hash a partir do login
+        cursor.execute(f"SELECT secret FROM passwords WHERE keyword = (%s)", (pc,)) # Procura o Hash a partir do login
         fetch2 = cursor.fetchone() # Resgata o resultado
         for item in fetch2:
             key = fetch2[item] # Resultado é retornado em forma de um dicionário (ou objeto pode ser também), se pega o elemento referente à chave 'login'
@@ -203,7 +180,8 @@ async def procurar(ctx):
                               "2- Seu login \n"
                               "3- O nome do seu cofre")
     # Caso contrário os elementos não existam, retorna essa mensagem
-    except mariadb.OperationalError:
+    except Exception as e:
+        await ctx.send(e)
         await ctx.author.send('''Pelo visto o senhor não cadastrou essa senha,
 cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cadastrou''')
 
@@ -213,18 +191,21 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 @client.command()
 async def deletar(ctx): # Aqui a porca torce o rabo
     try:
-        conn = mariadb.connect(host='localhost',
-                               user='watchdog',
-                               password=senha_watch,
-                               database='sherlock',
-                               cursorclass=mariadb.cursors.DictCursor)
         # Declaração do objeto do cursor
         cursor = conn.cursor()
-        msg = (str(ctx.message.content)) # Mensagem do usuário
-        x = msg.splitlines() # Divisão em lista
-        pt1 = str(x[1]) # Pega o login
-        pt2 = (x[2]) # Pega a tabela
-        sql_query = f"DELETE FROM {pt2} WHERE login = %s" # Query para deletar a senha, se não existir, ela prossegue mesmo assim
+        msg = (str(ctx.message.content))  # Mensagem do usuário
+        x = msg.splitlines()  # Divisão em lista
+        senha = x[1]  # Senha
+        pt1 = str(x[2])  # Pega a palavra-chave
+        id = ctx.author.id
+        watchdog_query = "SELECT name, master_password from users where discord_id = %s"
+        cursor.execute(watchdog_query, (id,))
+        a = cursor.fetchone()
+        senha_do_cofre = a["master_password"]
+        ph = PasswordHasher()
+        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
+            await ctx.send("Você não tem permissão para fazer esse comando, crie uma conta primeiro por favor")
+        sql_query = f"DELETE FROM passwords WHERE keyword = %s" # Query para deletar a senha, se não existir, ela prossegue mesmo assim
         cursor.execute(sql_query, pt1) #Execução da query
         if cursor.rowcount > 0:
             await ctx.send("Foi deletado")
@@ -237,7 +218,8 @@ async def deletar(ctx): # Aqui a porca torce o rabo
                        "2- Seu login \n"
                        "3- O nome do seu cofre")
     # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
-    except mariadb.OperationalError:
+    except Exception as e:
+        await ctx.send(e)
         await ctx.author.send("Não foi possível deletar a senha") #Caso falte nome da tabela ou o nome do comando esteja errado
 
 '''-------------------------FIM DO COMANDO DE ATUALIZAR------------------------------'''
@@ -247,25 +229,27 @@ async def deletar(ctx): # Aqui a porca torce o rabo
 @client.command()
 async def ver (ctx):
     try:
-        conn = mariadb.connect(host='localhost',
-                               user='watchdog',
-                               password=senha_watch,
-                               database='sherlock',
-                               cursorclass=mariadb.cursors.DictCursor)
-        # Declaração do objeto do cursor
         cursor = conn.cursor()
         msg = (str(ctx.message.content))  # Mensagem do usuário
         x = msg.splitlines()  # Divisão em lista
-        pt2 = str(x[1])  # Pega a tabela
-        sql_query = f"SELECT login FROM {pt2}" # Query para selecionar os logins
-        cursor.execute(sql_query)  # Seleciona todos os logins do cofre (somente os logins)
+        senha = x[1]  # Senha
+        id = ctx.author.id
+        watchdog_query = "SELECT name, master_password from users where discord_id = %s"
+        cursor.execute(watchdog_query, (id,))
+        a = cursor.fetchone()
+        senha_do_cofre = a["master_password"]
+        ph = PasswordHasher()
+        if not ph.verify(senha_do_cofre, str(senha).encode("UTF-8")):
+            await ctx.send("Você não tem permissão para fazer esse comando, crie uma conta primeiro por favor")
+        sql_query = f"SELECT keyword FROM passwords WHERE id_discord = %s" # Query para selecionar os logins
+        cursor.execute(sql_query, id)  # Seleciona todos os logins do cofre (somente os logins)
         rs = (cursor.fetchall())  # Resgate de todos os logins
         conn.commit()  # Gravação
         conn.close()  # Fechamento
         cont = 1  # Contador
         for i in rs:  # Para cada chave no dicionário (objeto) retornado pelo SQL
-            resultados = (i["login"])  # Os resultados serão iguais ao valor do login
-            await ctx.author.send(f"Essa é a sua senha número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
+            resultados = (i["keyword"])  # Os resultados serão iguais ao valor do login
+            await ctx.author.send(f"Essa é a sua palavra-chave número {cont}: " + "".join(resultados)) # Deve se mandar a mensagem com cada login do cofre
             cont = cont + 1  # E cada vez que a iteração acontecer, haverá um índice falando qual o número do login e consequetemente revelando a quantidade de senhas que você colocou ali
         logger.info(f"{horas}: resquisição de tabela realizada")  # Log
     # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
@@ -273,8 +257,9 @@ async def ver (ctx):
         await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
                        "1- O comando '?ver' \n"
                        "2- O nome do seu cofre")
-    except mariadb.OperationalError:
-        await ctx.author.send("Não foi possível deletar a senha")  # Caso falte nome da tabela ou o nome do comando esteja errado
+    except Exception as e:
+        await ctx.send(e)
+        await ctx.author.send("Não foi possível ver suas palavras chaves")  # Caso falte nome da tabela ou o nome do comando esteja errado
 
 '''-------------------------FIM DO COMANDO DE VER------------------------------'''
 
