@@ -1,5 +1,5 @@
 # Sherlock Project
-Versão alpha 0.01
+Alpha 0.02
 
 You can manage your passwords with security with this discord bot
 All you need to do is register and you will be able to add, search for and delete your passwords
