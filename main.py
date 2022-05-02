@@ -21,7 +21,7 @@ from pymysqlpool.pool import Pool as mariadb  # Ferramenta de conexão pool com 
 intents = discord.Intents.default() #Declaração do objeto dos intents
 intents.members = True # Permite o acesso aos membros do servidor
 client = commands.Bot(command_prefix="?", intents=intents) # Quando alguém for digitar um comando, ele precisa digitar com um ponto de interrogação antes
-nao = ("http", "jpg", "png", "mp4", "mp3", "zip", "deb", "exe", "rpm","rar","sql","html","mpeg") # Palavras que não podem ser colocadas como senha
+nao = (".jpg", ".png", ".mp4", ".mp3", ".zip", ".deb", ".exe", ".rpm",".rar", ".html",".mpeg" , ".css", ".js") # Palavras que não podem ser colocadas como senha
 data = time.localtime() # Data local para log
 horas = time.strftime("%H:%M:%S", data) # Formatação da data
 logger = logging.getLogger("SHERLOCK") # Criação do objeto que pega o logger do Sherlock
@@ -36,9 +36,10 @@ file.setLevel(logging.INFO)
 logger.addHandler(file)
 
 # Configuração do banco de dados
-
 pool = mariadb(host='localhost', user='watchdog', password='desmasiadostrintaecincose357', database='baskerville')
 conn = pool.get_conn()
+cursor = conn.cursor()
+
 '''-------------------------ÍNICIO DA APLICAÇÃO-----------------------------'''
 
 # Checagem de disponibilidade do bot
@@ -46,6 +47,7 @@ conn = pool.get_conn()
 async def on_ready():
     print("Bot está pronto") #Se o bot estiver apto para se conectar, só printe que ele está pronto
     logger.info("Bot está pronto") # Log
+    return True
 
 @client.command() # Evento do bot (não é ativado por trigger)
 async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele, ele já vai criar a conta automaticamente
@@ -67,10 +69,13 @@ async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele
         sql_query = "INSERT INTO users(discord_id, name, master_password) VALUES(%s, %s, %s)"
         cursor.execute(sql_query, (member_id, nome_do_usuario, senha_hasehada)) # Execução da query
         conn.commit()
-        conn.close() # Fecha a conexão  com o banco de dados
         await ctx.send(f"Seja bem vindo {a.name}, sua conta já foi criada com sucesso") # Manda pro usuário que a conta já foi criada
+        logger.info(f"{a.name} criou a conta com sucesso") # Log
+    except IndexError:
+        await ctx.send(f"Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
+                       "1- O comando ?criar_conta \n"
+                       "2- A sua senha mestra (Não perca ela por favor, e mesmo assim se perder, você ainda pode substituir ela")
     except Exception as e:
-        print(e)
         await ctx.send("Por onde andava ? Que seja, bem vindo novamente, sua conta já estava aqui quando verifiquei pela última vez")
 
 '''-------------------------COMANDO DE COLOCAR------------------------------'''
@@ -79,7 +84,6 @@ async def criar_conta(ctx): # Quando um membro entrar no servidor com o bot nele
 async def colocar(ctx):
     try:
         # Declaração do objeto do cursor
-        cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Apanhado do countéudo
         x = msg.splitlines() # Divisão do countéudo em lista
         senha = x[1] # Apanhado da senha
@@ -112,8 +116,8 @@ async def colocar(ctx):
                 key = (main_hash.derive(pt1.encode("UTF-8")))  # Geração da chave
                 t = f(base64.urlsafe_b64encode(key))  # Codificação da chave em base64 (pra "binarizar")
                 nova_senha = t.encrypt(pt3.encode("UTF-8"))
-                site = t.encrypt(pt1.encode("UTF-8"))
-                login = t.encrypt(pt2.encode("UTF-8"))# Senha criptografada
+                login = t.encrypt(pt1.encode("UTF-8"))
+                site = t.encrypt(pt2.encode("UTF-8"))# Senha criptografada
                 sql_query = f"INSERT INTO passwords(`id_discord`,`login`,`site`,`keyword`,`password`, `secret`) VALUES (%s,%s,%s,%s,%s,%s)" # Query para colocar o login, a senha, e o hash
                 cursor.execute(sql_query,(id, login, site, pt4, nova_senha, key)) # Cadastro do login, senha e hash
                 conn.commit() # Gravação dos resultados # Fechamento da conexão
@@ -146,7 +150,6 @@ async def colocar(ctx):
 async def procurar(ctx):
     try:
         # Declaração do objeto do cursor
-        cursor = conn.cursor()
         msg = (str(ctx.message.content)) # Mensagem do usuário
         x = msg.splitlines() # Divisão em lista
         senha = x[1] # Senha
@@ -167,9 +170,21 @@ async def procurar(ctx):
         fetch2 = cursor.fetchone() # Resgata o resultado
         for item in fetch2:
             key = fetch2[item] # Resultado é retornado em forma de um dicionário (ou objeto pode ser também), se pega o elemento referente à chave 'login'
+        cursor.execute(f"SELECT site FROM passwords WHERE keyword = (%s)", (pc,))  # Procura o Hash a partir do login
+        fetch3 = cursor.fetchone()  # Resgata o resultado
+        for item in fetch3:
+             site = fetch3[item]  # Resultado é retornado em forma de um dicionário (ou objeto pode ser também), se pega o elemento referente à chave 'login'
+        cursor.execute(f"SELECT login FROM passwords WHERE keyword = (%s)", (pc,))  # Procura o Hash a partir do login
+        fetch4 = cursor.fetchone()  # Resgata o resultado
+        for item in fetch4:
+            login = fetch4[item]  # Resultado é retornado em forma de um dicionário (ou objeto pode ser também), se pega o elemento referente à chave 'login'
         t = f(base64.urlsafe_b64encode(key)) # Codifica a chave
         senha_descriptografada = t.decrypt(senha_criptografada.encode("UTF-8")) # Agora com a chave, descriptografa a senha retornada anteriormente
+        site_descriptografado = t.decrypt(site.encode("UTF-8")) # Agora com a chave, descriptografa o site retornado anteriormente
+        login_descriptografado = t.decrypt(login.encode("UTF-8")) # Agora com a chave, descriptografa o login retornado anteriormente
         await ctx.author.send("Aqui está sua senha senhor: " + senha_descriptografada.decode("utf-8")) # Mensagem de sucesso
+        await ctx.author.send(f"Aqui está seu site senhor: {site_descriptografado.decode('UTF-8')}")  # Mensagem de sucesso
+        await ctx.author.send(f"Aqui está seu login senhor: {login_descriptografado.decode('UTF-8')}")  # Mensagem de sucesso
         conn.commit() # Gravação
         logger.info(f"{horas}: requisição realizada") # Log
 
@@ -177,8 +192,8 @@ async def procurar(ctx):
     except IndexError:
         await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
                               "1- O comando '?procurar' \n"
-                              "2- Seu login \n"
-                              "3- O nome do seu cofre")
+                              "2- Sua senha mestra \n"
+                              "3- A sua palavra-chave (Se não lembra, usar o comando 'ver'")
     # Caso contrário os elementos não existam, retorna essa mensagem
     except Exception as e:
         await ctx.send(e)
@@ -192,7 +207,6 @@ cadastre ela primeiro para que eu possa guardá-la ou procure outra que já cada
 async def deletar(ctx): # Aqui a porca torce o rabo
     try:
         # Declaração do objeto do cursor
-        cursor = conn.cursor()
         msg = (str(ctx.message.content))  # Mensagem do usuário
         x = msg.splitlines()  # Divisão em lista
         senha = x[1]  # Senha
@@ -208,15 +222,15 @@ async def deletar(ctx): # Aqui a porca torce o rabo
         sql_query = f"DELETE FROM passwords WHERE keyword = %s" # Query para deletar a senha, se não existir, ela prossegue mesmo assim
         cursor.execute(sql_query, pt1) #Execução da query
         if cursor.rowcount > 0:
-            await ctx.send("Foi deletado")
+            await ctx.send("A sua senha foi deletada com sucesso")
             conn.commit()  # Gravação
         else:
-            await ctx.author.send("Não")
+            await ctx.author.send("Não foi possível deletar sua senha, por favor, digite ela corretamente")
     except IndexError: # Se estiver faltando algum elemento, retorna essa mensagem
         await ctx.author.send("Não foi possível, eu vi que você não colocou algum campo, siga esta sequência. \n"
                        "1- O comando '?deletar' \n"
-                       "2- Seu login \n"
-                       "3- O nome do seu cofre")
+                       "2- Sua senha mestra \n"
+                       "3- A palavra-chave da sua senha")
     # Se alguma coisa não estiver certa mesmo assim, retorne essa mensagem
     except Exception as e:
         await ctx.send(e)
@@ -229,7 +243,6 @@ async def deletar(ctx): # Aqui a porca torce o rabo
 @client.command()
 async def ver (ctx):
     try:
-        cursor = conn.cursor()
         msg = (str(ctx.message.content))  # Mensagem do usuário
         x = msg.splitlines()  # Divisão em lista
         senha = x[1]  # Senha
@@ -245,7 +258,6 @@ async def ver (ctx):
         cursor.execute(sql_query, id)  # Seleciona todos os logins do cofre (somente os logins)
         rs = (cursor.fetchall())  # Resgate de todos os logins
         conn.commit()  # Gravação
-        conn.close()  # Fechamento
         cont = 1  # Contador
         for i in rs:  # Para cada chave no dicionário (objeto) retornado pelo SQL
             resultados = (i["keyword"])  # Os resultados serão iguais ao valor do login
@@ -346,6 +358,7 @@ async def dicas(ctx): # Dicas de proteção
 
 if __name__ == "__main__": # Comando que impede a ativação desnecessária do programa
     client.run(token)
+    conectar()
 
 
 
