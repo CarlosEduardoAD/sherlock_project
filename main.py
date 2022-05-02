@@ -358,7 +358,6 @@ async def dicas(ctx): # Dicas de proteção
 
 if __name__ == "__main__": # Comando que impede a ativação desnecessária do programa
     client.run(token)
-    conectar()
 
 
 
