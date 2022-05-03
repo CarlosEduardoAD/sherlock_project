@@ -4,4 +4,4 @@ argon2-cffi
 discord
 cryptography
 python-dotenv
-pymysql
+PyMySQL
