@@ -1,5 +1,5 @@
 import pytest
 import main
 
-def test_conn():
+def TestConn():
     assert main.on_ready() == True
