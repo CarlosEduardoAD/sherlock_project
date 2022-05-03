@@ -1,2 +1,7 @@
 pytest
 flake8
+argon2-cffi
+discord
+cryptography
+python-dotenv
+pymysql
