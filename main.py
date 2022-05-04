@@ -2,7 +2,7 @@
 # Documentação disponível na página do github
 
 import base64  # Ferramenta de Codificação
-import logging  # Ferramenta de log (rlx q aqui não tem log4shell ok)
+import logging  # Ferramenta de log
 import os  # Usado simplesmente para gerar caractéres aleatórios
 import re  # Ferramenta de REGEX
 import time  # Ferramenta de tempo
