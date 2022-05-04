@@ -12,5 +12,5 @@ def async_test(coro):
     return wrapper
 
 @async_test
-def TestConn():
-    assert main.on_ready() == True
+async def TestConn():
+    assert await main.on_ready() == True
