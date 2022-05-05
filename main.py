@@ -36,8 +36,8 @@ file.setLevel(logging.INFO)
 logger.addHandler(file)
 
 # Configuração do banco de dados
-pool = mariadb(host='containers-us-west-40.railway.app', user='root', password='pbGgHTY2uN8IY8EZ44FB', database='railway', port=6711)
-conn = pool.get_conn(pre_ping=False)
+pool = mariadb(host='containers-us-west-40.railway.app', user='root', password='pbGgHTY2uN8IY8EZ44FB', database='railway', port=6711, pre_ping=False)
+conn = pool.get_conn()
 cursor = conn.cursor()
 
 '''-------------------------ÍNICIO DA APLICAÇÃO-----------------------------'''
