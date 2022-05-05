@@ -30,10 +30,7 @@ token = os.getenv('token') # Pega o token do ambiente
 senha_watch = os.getenv('senha_watch') # Pega a senha do watchdog
 
 #Configuração do Logging
-logging.basicConfig(filename = "logs.log", level=logging.INFO)
-file = logging.FileHandler("logs.log")
-file.setLevel(logging.INFO)
-logger.addHandler(file)
+logging.basicConfig(level=logging.INFO)
 
 # Configuração do banco de dados
 pool = mariadb(host='containers-us-west-40.railway.app', user='root', password='pbGgHTY2uN8IY8EZ44FB', database='railway', port=6711)
