@@ -29,7 +29,7 @@ load_dotenv() # Carrega o ambiente onde está o token
 token = os.getenv('token') # Pega o token do ambiente
 senha_watch = os.getenv('senha_watch') # Pega a senha do watchdog
 
-#Configuração do Logging
+#Configuração do Logging no prompt
 logging.basicConfig(level=logging.INFO)
 
 # Configuração do banco de dados
