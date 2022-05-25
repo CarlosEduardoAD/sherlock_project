@@ -1,5 +1,7 @@
 '''----------------------------SHERLOCK_PROJECT------------------------------'''
-# Documentação disponível na página do github
+# Projeto open-source mais para portfólio e aprendizagem, não é intecionado para uso sério (ainda...)
+
+# Importação das bibliotecas
 
 import base64  # Ferramenta de Codificação
 import logging  # Ferramenta de log
@@ -9,9 +11,7 @@ import time  # Ferramenta de tempo
 from argon2 import PasswordHasher, Type # Ferramenta de criptografia
 import discord  # Importação da biblioteca do discord para ativação dos intents
 from cryptography.fernet import Fernet as f  # Biblioteca utilizada para a criptografia
-from cryptography.hazmat.primitives import hashes  # Importação da biblioteca de Hashes
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt  # Importação do algoritmo de criptografia
-# Importação das bibliotecas
 from discord.ext import commands  # Biblioteca do discord
 from dotenv import load_dotenv  # Ferramenta de ambiente
 from pymysqlpool.pool import Pool as mariadb  # Ferramenta de conexão pool com o banco de dados
