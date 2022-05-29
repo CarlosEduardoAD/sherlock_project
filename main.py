@@ -28,12 +28,17 @@ logger = logging.getLogger("SHERLOCK") # Criação do objeto que pega o logger d
 load_dotenv() # Carrega o ambiente onde está o token
 token = os.getenv('token') # Pega o token do ambiente
 senha_watch = os.getenv('senha_watch') # Pega a senha do watchdog
+host = os.getenv('host')
+pass_base = os.getenv("password_base")
+user_base = os.getenv('user')
+base_name = os.getenv("base_name")
+port = os.getenv('PORT')
 
 #Configuração do Logging no prompt
 logging.basicConfig(level=logging.INFO)
 
 # Configuração do banco de dados
-pool = mariadb(host='containers-us-west-40.railway.app', user='root', password='pbGgHTY2uN8IY8EZ44FB', database='railway', port=6711)
+pool = mariadb(host=host, user=user_base, password=pass_base, database=base_name, port=port)
 conn = pool.get_conn()
 cursor = conn.cursor()
 
